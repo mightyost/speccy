@@ -1,0 +1,30 @@
+Flags:
+
+When performing a sum:
+
+- Sign is always set to bit 7 of the result
+- Zero is set if the result is 0x00
+- Half-carry is set when the right nibble sum of the operands overflows
+- Overflow is set when both operands are positive and signed sum is negative or both operands are negative and the signed sum is positive
+- Add/Sub is reset
+- Carry is set if the unsigned sum overflows 0xFF
+
+
+Half-carry flag:
+
+FLAG = (A^B^RESULT)&0x10  for any operation
+
+Overflow flag:
+
+FLAG = ~(A^B)&(B^RESULT)&0x80 for addition [ADD/ADC]
+FLAG = (A^B)&(A^RESULT)&0x80  for subtraction [SUB/SBC]
+
+For INC/DEC, you can use following simplifications:
+
+INC:
+H_FLAG = (RESULT&0x0F)==0x00
+V_FLAG = RESULT==0x80
+
+DEC:
+H_FLAG = (RESULT&0x0F)==0x0F
+V_FLAG = RESULT==0x7F
