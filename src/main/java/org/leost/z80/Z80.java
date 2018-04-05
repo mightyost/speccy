@@ -4,7 +4,7 @@ package org.leost.z80;
  */
 public class Z80 {
 
-    private class Flags {
+    protected class Flags {
         boolean S, Z, Y, H, X, P, N, C;
 
         int value() {
@@ -32,9 +32,9 @@ public class Z80 {
     protected int reg_SP;         // Stack Pointer
     protected int reg_PC;         // Program pointer
 
-    protected int lastOpPC;           // Program pointer for last op code
+    protected int lastOpPC;       // Program pointer for last op code
 
-    protected int IFF1, IFF2;     // The two enable flip-flops
+    protected int IFF1, IFF2;     // The two interrupt flip-flops
 
     private Memory mem;
     private IO io;
@@ -107,6 +107,7 @@ public class Z80 {
 
     protected void executeOp() {
         int n, nn;
+        Flags f;
 
         int code = readOp();
 
@@ -133,12 +134,12 @@ public class Z80 {
                 break;
 
             case 0x04:  // INC B
-                reg_B = inc_reg8(reg_B);
+                reg_B = inc8(reg_B);
                 logOp("INC B");
                 break;
 
             case 0x05:  // DEC B
-                reg_B = dec_reg8(reg_B);
+                reg_B = dec8(reg_B);
                 logOp("DEC B");
                 break;
 
@@ -148,17 +149,54 @@ public class Z80 {
                 break;
 
             case 0x07:  // RLCA
-                n = bit(reg_A, 7);
-                reg_A = (reg_A << 1) + n;
-                reg_F.C = n == 1;
-                reg_F.H = false;
-                reg_F.N = false;
+                rlca();
                 logOp("RLCA");
+                break;
+
+            case 0x08:  // EX AF, AF'
+                n = reg_A;
+                reg_A = reg_a;
+                reg_a = n;
+                f = reg_F;
+                reg_F = reg_f;
+                reg_f = f;
+                logOp("EX AF, AF'");
+                break;
+
+            case 0x09:  // ADD HL, BC
+                HL(add16(HL(), BC()));
+                logOp("ADD HL, BC");
                 break;
 
             case 0x0A:  // LD A, (BC)
                 reg_A = mem.read8(BC());
                 logOp("LD A, (BC)");
+                break;
+
+            case 0x0B:  // DEC BC
+                BC(dec16(BC()));
+                logOp("DEC BC");
+                break;
+
+            case 0x0C:  // INC C
+                reg_C = inc8(reg_C);
+                logOp("INC C");
+                break;
+
+            case 0x0D:  // DEC C
+                reg_C = dec8(reg_C);
+                logOp("DEC C");
+                break;
+
+            case 0x0E:  // LD C, n
+                n = readN();
+                reg_C = n;
+                logOp("LD C, %s", hex8(n));
+                break;
+
+            case 0x0F:  // RRCA
+                rrca();
+                logOp("RRCA");
                 break;
 
             case 0x11:  // LD DE, nn
@@ -777,8 +815,8 @@ public class Z80 {
         }
     }
 
-    private int inc_reg8(int reg8) {
-        int result = (reg8 + 1) & 0xFF;
+    private int inc8(int val8) {
+        int result = (val8 + 1) & 0xFF;
 
         reg_f.S = result < 0;
         reg_f.Z = result == 0;
@@ -789,8 +827,8 @@ public class Z80 {
         return result;
     }
 
-    private int dec_reg8(int reg8) {
-        int result = (reg8 - 1) & 0xFF;
+    private int dec8(int val8) {
+        int result = (val8 - 1) & 0xFF;
 
         reg_f.S = result < 0;
         reg_f.Z = result == 0;
@@ -799,6 +837,37 @@ public class Z80 {
         reg_f.N = true;
 
         return result;
+    }
+
+    private int dec16(int val16) {
+        return (val16 - 1) & 0xFFFF;
+    }
+
+    private void rlca() {
+        int n = bit(reg_A, 7);
+        reg_A = ((reg_A << 1) + n) & 0xFF;
+        reg_F.C = n == 1;
+        reg_F.H = false;
+        reg_F.N = false;
+    }
+
+    private void rrca() {
+        int n = bit(reg_A, 0);
+        reg_A = ((reg_A >> 1) + (n << 7)) & 0xFF;
+        reg_F.C = n == 1;
+        reg_F.H = false;
+        reg_F.N = false;
+    }
+
+    private int add16(int a16, int b16) {
+        int result = a16 + b16;
+
+        // TODO: Should result be and:ed with 0xFFFF before calc H below?
+        reg_F.H = ((a16 ^ b16 ^ result) & 0x10) != 0; // FLAG = (A^B^RESULT)&0x10
+        reg_F.N = false;
+        reg_F.C = result > 0xFFFF;
+
+        return result & 0xFFFF;
     }
 
     private int bit(int val, int pos) {
@@ -825,7 +894,7 @@ public class Z80 {
     private void logOp(String op, Object ... args) {
         System.out.printf("0x%04X:\t", lastOpPC);
         System.out.printf(op, args);
-        System.out.printf("\t\t\t; A:%s B:%s C:%s D:%s E:%s H:%s L:%s IX:%s IY:%s I:%s R:%S F:%s", hex8(reg_A), hex8(reg_B), hex8(reg_C), hex8(reg_D), hex8(reg_E), hex8(reg_H), hex8(reg_L), hex16(reg_IX), hex16(reg_IY), hex8(reg_I), hex8(reg_R), hex8(reg_F.value()));
+        System.out.printf("\t\t\t; A:%s B:%s C:%s D:%s E:%s H:%s L:%s IX:%s IY:%s I:%s R:%s F:%s", hex8(reg_A), hex8(reg_B), hex8(reg_C), hex8(reg_D), hex8(reg_E), hex8(reg_H), hex8(reg_L), hex16(reg_IX), hex16(reg_IY), hex8(reg_I), hex8(reg_R), hex8(reg_F.value()));
         System.out.println();
     }
 
