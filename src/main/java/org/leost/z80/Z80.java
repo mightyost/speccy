@@ -32,7 +32,7 @@ public class Z80 {
     protected int reg_SP;         // Stack Pointer
     protected int reg_PC;         // Program pointer
 
-    protected int lastOpPC;       // Program pointer for last op code
+    protected int opAddr;       // Program pointer for last op code
 
     protected int IFF1, IFF2;     // The two interrupt flip-flops
 
@@ -84,7 +84,7 @@ public class Z80 {
     }
 
     private int readOp() {
-        lastOpPC = reg_PC;
+        opAddr = reg_PC;
         return mem.read8(reg_PC++);
     }
 
@@ -129,7 +129,7 @@ public class Z80 {
                 break;
 
             case 0x03:  // INC BC
-                BC(BC() + 1);
+                BC(inc16(BC()));
                 logOp("INC BC");
                 break;
 
@@ -189,14 +189,22 @@ public class Z80 {
                 break;
 
             case 0x0E:  // LD C, n
-                n = readN();
-                reg_C = n;
+                reg_C = n = readN();
                 logOp("LD C, %s", hex8(n));
                 break;
 
             case 0x0F:  // RRCA
                 rrca();
                 logOp("RRCA");
+                break;
+
+            case 0x10:  // DJNZ (PC+e)
+                n = readN();
+                reg_B = (reg_B - 1) & 0xFF;
+                if (reg_B != 0) {
+                    reg_PC += (byte) n;
+                }
+                logOp("DJNZ %s", hex8(n));
                 break;
 
             case 0x11:  // LD DE, nn
@@ -210,9 +218,36 @@ public class Z80 {
                 logOp("LD (DE), A");
                 break;
 
+            case 0x13:  // INC DE
+                DE(inc16(DE()));
+                logOp("INC DE");
+                break;
+
+            case 0x14:  // INC D
+                reg_D = inc8(reg_D);
+                logOp("INC D");
+                break;
+
+            case 0x15:  // DEC D
+                reg_D = dec8(reg_D);
+                logOp("DEC D");
+                break;
+
             case 0x16:  // LD D, n
                 reg_D = n = readN();
                 logOp("LD D, %s", hex8(n));
+                break;
+
+            case 0x17:  // RLA
+                rla();
+                logOp("RLA");
+                break;
+
+            case 0x18:  // JR (PC+e)
+                n = readN();
+                reg_B = (reg_B - 1) & 0xFF;
+                reg_PC += (byte) n;
+                logOp("JR %s", hex8(n));
                 break;
 
             case 0x1A:  // LD A, (DE)
@@ -839,6 +874,10 @@ public class Z80 {
         return result;
     }
 
+    private int inc16(int val16) {
+        return (val16 + 1) & 0xFFFF;
+    }
+
     private int dec16(int val16) {
         return (val16 - 1) & 0xFFFF;
     }
@@ -854,6 +893,15 @@ public class Z80 {
     private void rrca() {
         int n = bit(reg_A, 0);
         reg_A = ((reg_A >> 1) + (n << 7)) & 0xFF;
+        reg_F.C = n == 1;
+        reg_F.H = false;
+        reg_F.N = false;
+    }
+
+    private void rla() {
+        int n = bit(reg_A, 7);
+        reg_A = (reg_A << 1) & 0xFF;
+        reg_A = reg_A | (reg_F.C ? 1 : 0);
         reg_F.C = n == 1;
         reg_F.H = false;
         reg_F.N = false;
@@ -892,7 +940,7 @@ public class Z80 {
     }
 
     private void logOp(String op, Object ... args) {
-        System.out.printf("0x%04X:\t", lastOpPC);
+        System.out.printf("0x%04X:\t", opAddr);
         System.out.printf(op, args);
         System.out.printf("\t\t\t; A:%s B:%s C:%s D:%s E:%s H:%s L:%s IX:%s IY:%s I:%s R:%s F:%s", hex8(reg_A), hex8(reg_B), hex8(reg_C), hex8(reg_D), hex8(reg_E), hex8(reg_H), hex8(reg_L), hex16(reg_IX), hex16(reg_IY), hex8(reg_I), hex8(reg_R), hex8(reg_F.value()));
         System.out.println();
