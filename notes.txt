@@ -28,3 +28,70 @@ V_FLAG = RESULT==0x80
 DEC:
 H_FLAG = (RESULT&0x0F)==0x0F
 V_FLAG = RESULT==0x7F
+
+
+DAA:
+When this instruction is executed, the A register is BCD corrected using the contents of the flags. The exact process is
+the following: if the least significant four bits of A contain a non-BCD digit (i. e. it is greater than 9) or the H flag
+is set, then $06 is added to the register. Then the four most significant bits are checked. If this more significant digit
+also happens to be greater than 9 or the C flag is set, then $60 is added.
+
+This provides a simple pattern for the instruction:
+
+For N = 0:
+ - if the lower 4 bits form a number greater than 9 or H is set, add $06 to the accumulator
+ - if the upper 4 bits form a number greater than 9 or C is set, add $60 to the accumulator
+
+For N = 1:
+The same rule applies when N=1. The only thing is that you instead have to subtract the correction to the accumulator
+
+Also, while DAA is intended to be run after an addition or subtraction, it can be run at any time.
+
+CHAPTER 4. UNDOCUMENTED EFFECTS
+(http://datasheets.chipdb.org/Zilog/Z80/z80-documented-0.90.pdf page 18)
+
+DAA instruction is useful when you’re using BCD values. After an addition or subtraction, DAA corrects the value back
+to BCD again. Note that it uses the CF flag, so it cannot be used after INC and DEC.
+Stefano Donati from Ramsoft1 has found the tables which describe the DAA operation. The input is the A register and the
+CF, NF, HF flags. Result is as follows:
+
+Depending on the NF flag, the ‘diff’ from this table must be added (NF is reset) or subtracted (NF is set) to A.
+
+  CF | high   | HF | low    | diff
+     | nibble |    | nibble |
++----+--------+----+--------+--------
+   0    0-9      0     0-9      00
+   0    0-9      1     0-9      06
+   0    0-8      *     a-f      06
+   0    a-f      0     0-9      60
+   1      *      0     0-9      60
+   1      *      1     0-9      66
+   1      *      *     a-f      66
+   0    9-f      *     a-f      66
+   0    a-f      1     0-9      66
+
+
+The CF flag is affected as follows:
+
+  CF   high     low      CF’
+       nibble   nibble
++----+--------+--------+----+
+  0     0-9      0-9     0
+  0     0-8      a-f     0
+  0     9-f      a-f     1
+  0     a-f      0-9     1
+  1       *        *     1
+
+The NF flags is affected as follows:
+
+  NF   HF   low     HF’
+            nibble
++----+----+--------+----+
+   0    *    0-9     0
+   0    *    a-f     1
+   1    0      *     0
+   1    1    6-f     0
+   1    1    0-5     1
+
+SF, YF, XF are copies of bit 7,5,3 of the result respectively; ZF is set according to the result and NF is always
+unchanged.

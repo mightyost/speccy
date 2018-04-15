@@ -83,6 +83,14 @@ public class Z80 {
         return (val16 >> 8) & 0xFF ;
     }
 
+    private int low4(int val8) {
+        return val8 & 0x0F;
+    }
+
+    private int high4(int val8) {
+        return (val8 >> 4) & 0x0F ;
+    }
+
     private int readOp() {
         opAddr = reg_PC;
         return mem.read8(reg_PC++);
@@ -255,10 +263,100 @@ public class Z80 {
                 logOp("LD A, (DE)");
                 break;
 
+            case 0x1B:  // DEC DE
+                DE(dec16(DE()));
+                logOp("DEC DE");
+                break;
+
+            case 0x1C:  // INC E
+                reg_E = inc8(reg_E);
+                logOp("INC E");
+                break;
+
+            case 0x1D:  // DEC E
+                reg_E = dec8(reg_E);
+                logOp("DEC E");
+                break;
+
+            case 0x1E:  // LD E, n
+                reg_E = n = readN();
+                logOp("LD E, %s", hex8(n));
+                break;
+
+            case 0x1F:  // RRA
+                rra();
+                logOp("RRA");
+                break;
+
+            case 0x23:  // INC HL
+                HL(inc16(HL()));
+                logOp("INC HL");
+                break;
+
+            case 0x24:  // INC H
+                reg_H = inc8(reg_H);
+                logOp("INC H");
+                break;
+
+            case 0x25:  // DEC H
+                reg_H = dec8(reg_H);
+                logOp("DEC H");
+                break;
+
+            case 0x27:  // DAA
+                daa();
+                logOp("DAA");
+                break;
+
+            case 0x26:  // LD H, n
+                reg_H = n = readN();
+                logOp("LD H, %s", hex8(n));
+                break;
+
+            case 0x2B:  // DEC HL
+                HL(dec16(HL()));
+                logOp("DEC HL");
+                break;
+
+            case 0x2C:  // INC L
+                reg_L = inc8(reg_L);
+                logOp("INC L");
+                break;
+
+            case 0x2D:  // DEC L
+                reg_L = dec8(reg_L);
+                logOp("DEC L");
+                break;
+
+            case 0x2E:  // LD L, n
+                reg_L = n = readN();
+                logOp("LD L, %s", hex8(n));
+                break;
+
             case 0x32:  // LD (nn), A
                 nn = readNn();
                 mem.write8(nn, reg_A);
                 logOp("LD (%s), A", hex16(nn));
+                break;
+
+            case 0x33:  // INC SP
+                reg_SP = inc16(reg_SP);
+                logOp("INC SP");
+                break;
+
+            case 0x3B:  // DEC SP
+                reg_SP = dec16(reg_SP);
+                logOp("DEC SP");
+                break;
+
+            case 0x3C:  // INC A
+                reg_A = inc8(reg_A);
+                logOp("INC A");
+                break;
+
+            case 0x3D:  // DEC A
+                reg_A = dec8(reg_A);
+                logOp("DEC A");
                 break;
 
             case 0x3E:  // LD A, n
@@ -905,6 +1003,44 @@ public class Z80 {
         reg_F.C = n == 1;
         reg_F.H = false;
         reg_F.N = false;
+    }
+
+    private void rra() {
+        int n = bit(reg_A, 0);
+        reg_A >>= 1;
+        reg_A |= reg_F.C ? (1 << 7) : 0;
+        reg_A &= 0xFF;
+        reg_F.C = n == 1;
+        reg_F.H = false;
+        reg_F.N = false;
+    }
+
+    private void daa() {
+        int corr = 0;
+
+        corr += low4(reg_A)  > 0x09 || reg_F.H ? 0x06 : 0x00;
+        corr += high4(reg_A) > 0x09 || reg_F.C ? 0x60 : 0x00;
+
+        // Special case
+        if (low4(reg_A) > 0x09 && high4(reg_A) > 0x08 && !reg_F.C ) {
+            corr = 0x66;
+        }
+
+        reg_A += reg_F.N ? -corr : corr;
+        reg_A &= 0xFF;
+
+        int low = low4(reg_A);
+        int high = high4(reg_A);
+
+        reg_F.S = bit(reg_A, 7) != 0;
+        reg_F.Z = reg_A == 0;
+        reg_F.C = reg_F.C ||
+                  high >= 0x09 && low >= 0x0A ||
+                  high >= 0x0A && low <= 0x09;
+        reg_F.H = reg_F.N && reg_F.H && low <= 0x05 ||
+                 !reg_F.N && low >= 0x0A;
+        reg_F.Y = bit(reg_A, 5) != 0;
+        reg_F.X = bit(reg_A, 3) != 0;
     }
 
     private int add16(int a16, int b16) {
