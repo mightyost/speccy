@@ -39,6 +39,8 @@ public class Z80 {
     private Memory mem;
     private IO io;
 
+    private boolean isHalted = false;
+
     public void init(Memory mem, IO io) {
         this.mem = mem;
         this.io = io;
@@ -92,6 +94,10 @@ public class Z80 {
     }
 
     private int readOp() {
+        if (isHalted) {
+            return 0x00; // NOP
+        }
+
         opAddr = reg_PC;
         return mem.read8(reg_PC++);
     }
@@ -251,11 +257,16 @@ public class Z80 {
                 logOp("RLA");
                 break;
 
-            case 0x18:  // JR (PC+e)
+            case 0x18:  // JR e
                 n = readN();
-                reg_B = (reg_B - 1) & 0xFF;
+                reg_PC -= 2;
                 reg_PC += (byte) n;
                 logOp("JR %s", hex8(n));
+                break;
+
+            case 0x19:  // ADD HL, DE
+                HL(add16(HL(), DE()));
+                logOp("ADD HL, DE");
                 break;
 
             case 0x1A:  // LD A, (DE)
@@ -288,6 +299,28 @@ public class Z80 {
                 logOp("RRA");
                 break;
 
+            case 0x20:  // JR NZ, e
+                n = readN();
+                if (!reg_F.Z) {
+                    reg_PC -= 2;
+                    reg_PC += (byte) n;
+                }
+                logOp("JR NZ, %s", hex8(n));
+                break;
+
+            case 0x21:  // LD HL, nn
+                nn = readNn();
+                HL(nn);
+                logOp("LD HL, %s", hex16(nn));
+                break;
+
+            case 0x22:  // LD (nn), HL
+                nn = readNn();
+                mem.write8(nn+0, reg_L);
+                mem.write8(nn+1, reg_H);
+                logOp("LD (%s), HL", hex16(nn));
+                break;
+
             case 0x23:  // INC HL
                 HL(inc16(HL()));
                 logOp("INC HL");
@@ -303,14 +336,35 @@ public class Z80 {
                 logOp("DEC H");
                 break;
 
+            case 0x26:  // LD H, n
+                reg_H = n = readN();
+                logOp("LD H, %s", hex8(n));
+                break;
+
             case 0x27:  // DAA
                 daa();
                 logOp("DAA");
                 break;
 
-            case 0x26:  // LD H, n
-                reg_H = n = readN();
-                logOp("LD H, %s", hex8(n));
+            case 0x28:  // JR Z, e
+                n = readN();
+                if (reg_F.Z) {
+                    reg_PC -= 2;
+                    reg_PC += (byte) n;
+                }
+                logOp("JR Z, %s", hex8(n));
+                break;
+
+            case 0x29:  // ADD HL, HL
+                HL(add16(HL(), HL()));
+                logOp("ADD HL, HL");
+                break;
+
+            case 0x2A:  // LD HL, (nn)
+                nn = readNn();
+                reg_H = mem.read8(nn+1);
+                reg_L = mem.read8(nn + 0);
+                logOp("LD HL, (nn)");
                 break;
 
             case 0x2B:  // DEC HL
@@ -333,6 +387,28 @@ public class Z80 {
                 logOp("LD L, %s", hex8(n));
                 break;
 
+            case 0x2F:  // CPL
+                reg_A = reg_A ^ 0xFF;
+                reg_F.H = true;
+                reg_F.N = true;
+                logOp("CPL");
+                break;
+
+            case 0x30:  // JR NC, e
+                n = readN();
+                if (!reg_F.C) {
+                    reg_PC -= 2;
+                    reg_PC += (byte) n;
+                }
+                logOp("JR NC, %s", hex8(n));
+                break;
+
+            case 0x31:  // LD SP, nn
+                nn = readNn();
+                reg_SP = nn;
+                logOp("LD SP, %s", hex16(nn));
+                break;
+
             case 0x32:  // LD (nn), A
                 nn = readNn();
                 mem.write8(nn, reg_A);
@@ -342,6 +418,53 @@ public class Z80 {
             case 0x33:  // INC SP
                 reg_SP = inc16(reg_SP);
                 logOp("INC SP");
+                break;
+
+            case 0x34:  // INC (HL)
+                n = mem.read8(HL());
+                n = inc8(n);
+                mem.write8(HL(), n);
+                logOp("INC (HL)");
+                break;
+
+            case 0x35:  // DEC (HL)
+                n = mem.read8(HL());
+                n = dec8(n);
+                mem.write8(HL(), n);
+                logOp("DEC (HL)");
+                break;
+
+            case 0x36:  // LD (HL), n
+                n = readN();
+                mem.write8(HL(), n);
+                logOp("LD (HL), %s", hex8(n));
+                break;
+
+            case 0x37:  // SCF
+                reg_F.C = true;
+                reg_F.N = false;
+                reg_F.H = false;
+                logOp("SCF");
+                break;
+
+            case 0x38:  // JR C, e
+                n = readN();
+                if (reg_F.C) {
+                    reg_PC -= 2;
+                    reg_PC += (byte) n;
+                }
+                logOp("JR C, %s", hex8(n));
+                break;
+
+            case 0x39:  // ADD HL, SP
+                HL(add16(HL(), reg_SP));
+                logOp("ADD HL, SP");
+                break;
+
+            case 0x3A:  // LD A, (nn)
+                nn = readNn();
+                reg_A = mem.read8(nn);
+                logOp("LD A, (%s)", hex16(nn));
                 break;
 
             case 0x3B:  // DEC SP
@@ -362,6 +485,13 @@ public class Z80 {
             case 0x3E:  // LD A, n
                 reg_A = n = readN();
                 logOp("LD A, %s", hex8(n));
+                break;
+
+            case 0x3F:  // CCF
+                reg_F.H = reg_F.C;
+                reg_F.N = false;
+                reg_F.C = !reg_F.C;
+                logOp("CCF");
                 break;
 
             case 0x40:  // LD B, B
@@ -629,6 +759,11 @@ public class Z80 {
                 logOp("LD (HL), L");
                 break;
 
+            case 0x76:  // HALT
+                isHalted = true;
+                logOp("HALT");
+                break;
+
             case 0x77:  // LD (HL), A
                 mem.write8(to16(reg_H, reg_L), reg_A);
                 logOp("LD (HL), A");
@@ -672,6 +807,119 @@ public class Z80 {
             case 0x7F:  // LD A, A
                 logOp("LD A, A");
                 break;
+
+            case 0x80:  // ADD A, B
+                reg_A = add8(reg_A, reg_B);
+                logOp("ADD A, B");
+                break;
+
+            case 0x81:  // ADD A, C
+                reg_A = add8(reg_A, reg_C);
+                logOp("ADD A, C");
+                break;
+
+            case 0x82:  // ADD A, D
+                reg_A = add8(reg_A, reg_D);
+                logOp("ADD A, D");
+                break;
+
+            case 0x83:  // ADD A, E
+                reg_A = add8(reg_A, reg_E);
+                logOp("ADD A, E");
+                break;
+
+            case 0x84:  // ADD A, H
+                reg_A = add8(reg_A, reg_H);
+                logOp("ADD A, H");
+                break;
+
+            case 0x85:  // ADD A, L
+                reg_A = add8(reg_A, reg_L);
+                logOp("ADD A, L");
+                break;
+
+            case 0x86:  // ADD A, (HL)
+                n = mem.read8(HL());
+                reg_A = add8(reg_A, n);
+                logOp("ADD A, (HL)");
+                break;
+
+            case 0x87:  // ADD A, A
+                reg_A = add8(reg_A, reg_A);
+                logOp("ADD A, A");
+                break;
+
+            case 0x88:  // ADC A, B
+                reg_A = adc8(reg_A, reg_B);
+                logOp("ADC A, B");
+                break;
+
+            case 0x89:  // ADC A, C
+                reg_A = adc8(reg_A, reg_C);
+                logOp("ADC A, C");
+                break;
+
+            case 0x8A:  // ADC A, D
+                reg_A = adc8(reg_A, reg_D);
+                logOp("ADC A, D");
+                break;
+
+            case 0x8B:  // ADC A, E
+                reg_A = adc8(reg_A, reg_E);
+                logOp("ADC A, E");
+                break;
+
+            case 0x8C:  // ADC A, H
+                reg_A = adc8(reg_A, reg_H);
+                logOp("ADC A, H");
+                break;
+
+            case 0x8D:  // ADC A, L
+                reg_A = adc8(reg_A, reg_L);
+                logOp("ADC A, L");
+                break;
+
+            case 0x8E:  // ADC A, (HL)
+                reg_A = adc8(reg_A, mem.read8(HL()));
+                logOp("ADC A, (HL)");
+                break;
+
+            case 0x8F:  // ADC A, A
+                reg_A = adc8(reg_A, reg_A);
+                logOp("ADC A, A");
+                break;
+
+            case 0x90:  // SUB A, B
+                reg_A = sub8(reg_A, reg_B);
+                logOp("SUB A, B");
+                break;
+
+            case 0x91:  // SUB A, C
+                reg_A = sub8(reg_A, reg_C);
+                logOp("SUB A, C");
+                break;
+
+            case 0x92:  // SUB A, D
+                reg_A = sub8(reg_A, reg_D);
+                logOp("SUB A, D");
+                break;
+
+            case 0x93:  // SUB A, E
+                reg_A = sub8(reg_A, reg_E);
+                logOp("SUB A, E");
+                break;
+
+            case 0x94:  // SUB A, H
+                reg_A = sub8(reg_A, reg_H);
+                logOp("SUB A, H");
+                break;
+
+            case 0x95:  // SUB A, L
+                reg_A = sub8(reg_A, reg_L);
+                logOp("SUB A, L");
+                break;
+
+
 
             case 0xDB:  // IN A, (n)
                 n = readN();
@@ -951,11 +1199,11 @@ public class Z80 {
     private int inc8(int val8) {
         int result = (val8 + 1) & 0xFF;
 
-        reg_f.S = result < 0;
-        reg_f.Z = result == 0;
-        reg_f.H = (result & 0x0F) == 0x00;  // H_FLAG = (RESULT&0x0F)==0x00
-        reg_f.P = result == 0x80;
-        reg_f.N = false;
+        reg_F.S = bit(result, 7) != 0;
+        reg_F.Z = result == 0;
+        reg_F.H = (result & 0x0F) == 0x00;  // H_FLAG = (RESULT&0x0F)==0x00
+        reg_F.P = result == 0x80;
+        reg_F.N = false;
 
         return result;
     }
@@ -963,11 +1211,11 @@ public class Z80 {
     private int dec8(int val8) {
         int result = (val8 - 1) & 0xFF;
 
-        reg_f.S = result < 0;
-        reg_f.Z = result == 0;
-        reg_f.H = (result & 0x0F) == 0x0F;  // H_FLAG = (RESULT&0x0F)==0x0F
-        reg_f.P = result == 0x7F;
-        reg_f.N = true;
+        reg_F.S = bit(result, 7) != 0;
+        reg_F.Z = result == 0;
+        reg_F.H = (result & 0x0F) == 0x0F;  // H_FLAG = (RESULT&0x0F)==0x0F
+        reg_F.P = result == 0x7F;
+        reg_F.N = true;
 
         return result;
     }
@@ -1043,15 +1291,48 @@ public class Z80 {
         reg_F.X = bit(reg_A, 3) != 0;
     }
 
-    private int add16(int a16, int b16) {
-        int result = a16 + b16;
+    private int add8(int a8, int b8) {
+        int res16 = a8 + b8;
+        byte res8 = (byte) res16;
 
-        // TODO: Should result be and:ed with 0xFFFF before calc H below?
-        reg_F.H = ((a16 ^ b16 ^ result) & 0x10) != 0; // FLAG = (A^B^RESULT)&0x10
+        reg_F.S = res8 < 0;
+        reg_F.Z = res8 == 0;
+        reg_F.H = (res8 & 0x0F) < (a8 & 0x0F);
+        reg_F.P = a8 >= 0 && b8 >= 0 && res8 < 0 || a8 < 0 && b8 < 0 && res8 >= 0;
         reg_F.N = false;
-        reg_F.C = result > 0xFFFF;
+        reg_F.C = res16 > 0xFF;
 
-        return result & 0xFFFF;
+        return res8;
+    }
+
+    private int adc8(int a8, int b8) {
+        int carry = reg_F.C ? 1 : 0;
+        return add8(a8, b8 + carry);
+    }
+
+    private int add16(int a16, int b16) {
+        int res = a16 + b16;
+
+        reg_F.H = (res & 0x0FFF) < (a16 & 0x0FFF);
+        reg_F.H = ((a16 ^ b16 ^ res) & 0x10) != 0; // FLAG = (A^B^RESULT)&0x10
+        reg_F.N = false;
+        reg_F.C = res > 0xFFFF;
+
+        return res & 0xFFFF;
+    }
+
+    private int sub8(int a8, int b8) {
+        int res16 = a8 + b8;
+        byte res8 = (byte) res16;
+
+        reg_F.S = res8 < 0;
+        reg_F.Z = res8 == 0;
+        reg_F.H = (res8 & 0x0F) > (a8 & 0x0F);
+        reg_F.P = a8 >= 0 && b8 >= 0 && res8 < 0 || a8 < 0 && b8 < 0 && res8 >= 0;
+        reg_F.N = false;
+        reg_F.C = res16 > 0xFF;
+
+        return res8;
     }
 
     private int bit(int val, int pos) {
@@ -1062,11 +1343,11 @@ public class Z80 {
         return val ? 1 : 0;
     }
 
-    private String hex8(int val) {
+    private static String hex8(int val) {
         return String.format("0x%02X", val);
     }
 
-    private String hex16(int val) {
+    private static String hex16(int val) {
         return String.format("0x%04X", val);
     }
 

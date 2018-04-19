@@ -11,11 +11,12 @@ import static org.junit.Assert.*;
 public class Z80Test {
 
     @Test
-    public void testLd() {
+    public void testLdAIXd() {
 
         // LD A, (IX + d)
 
         Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
 
         cpu.reg_PC = 0x0000;
         cpu.reg_IX = 0x1100;
@@ -318,15 +319,270 @@ public class Z80Test {
 
         cpu.executeOp();
 
-        assertEquals(0x0012, cpu.reg_PC);
+        assertEquals(0x0010, cpu.reg_PC);
 
         cpu.reg_PC = 0x1010;
         cpu.loadRam(0x1010, 0x18, 0xF0);
 
         cpu.executeOp();
 
-        assertEquals(0x1002, cpu.reg_PC);
+        assertEquals(0x1000, cpu.reg_PC);
     }
+
+    @Test
+    public void jrz() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.reg_F.Z = false;
+        cpu.loadRam(0x0000, 0x28, 0x10);
+
+        cpu.executeOp();
+
+        assertEquals(0x0002, cpu.reg_PC);
+
+        cpu.reg_PC = 0x0000;
+        cpu.reg_F.Z = true;
+        cpu.loadRam(0x0000, 0x28, 0x10);
+
+        cpu.executeOp();
+
+        assertEquals(0x0010, cpu.reg_PC);
+
+        cpu.reg_PC = 0x1010;
+        cpu.reg_F.Z = true;
+        cpu.loadRam(0x1010, 0x28, 0xF0);
+
+        cpu.executeOp();
+
+        assertEquals(0x1000, cpu.reg_PC);
+    }
+
+    @Test
+    public void jrnz() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.reg_F.Z = true;
+        cpu.loadRam(0x0000, 0x20, 0x10);
+
+        cpu.executeOp();
+
+        assertEquals(0x0002, cpu.reg_PC);
+
+        cpu.reg_PC = 0x0000;
+        cpu.reg_F.Z = false;
+        cpu.loadRam(0x0000, 0x20, 0x10);
+
+        cpu.executeOp();
+
+        assertEquals(0x0010, cpu.reg_PC);
+
+        cpu.reg_PC = 0x1010;
+        cpu.reg_F.Z = false;
+        cpu.loadRam(0x1010, 0x20, 0xF0);
+
+        cpu.executeOp();
+
+        assertEquals(0x1000, cpu.reg_PC);
+    }
+
+    @Test
+    public void jrc() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.reg_F.C = false;
+        cpu.loadRam(0x0000, 0x38, 0x10);
+
+        cpu.executeOp();
+
+        assertEquals(0x0002, cpu.reg_PC);
+
+        cpu.reg_PC = 0x0000;
+        cpu.reg_F.C = true;
+        cpu.loadRam(0x0000, 0x38, 0x10);
+
+        cpu.executeOp();
+
+        assertEquals(0x0010, cpu.reg_PC);
+
+        cpu.reg_PC = 0x1010;
+        cpu.reg_F.C = true;
+        cpu.loadRam(0x1010, 0x38, 0xF0);
+
+        cpu.executeOp();
+
+        assertEquals(0x1000, cpu.reg_PC);
+    }
+
+    @Test
+    public void jrnc() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.reg_F.C = true;
+        cpu.loadRam(0x0000, 0x30, 0x10);
+
+        cpu.executeOp();
+
+        assertEquals(0x0002, cpu.reg_PC);
+
+        cpu.reg_PC = 0x0000;
+        cpu.reg_F.C = false;
+        cpu.loadRam(0x0000, 0x30, 0x10);
+
+        cpu.executeOp();
+
+        assertEquals(0x0010, cpu.reg_PC);
+
+        cpu.reg_PC = 0x1010;
+        cpu.reg_F.C = false;
+        cpu.loadRam(0x1010, 0x30, 0xF0);
+
+        cpu.executeOp();
+
+        assertEquals(0x1000, cpu.reg_PC);
+    }
+
+    @Test
+    public void ldHLnn() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0x21, 0x11, 0x22);
+
+        cpu.executeOp();
+
+        assertEquals(0x11, cpu.reg_L);
+        assertEquals(0x22, cpu.reg_H);
+    }
+
+    @Test
+    public void cpl() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0x2F, 0x2F, 0x2F, 0x2F);
+        cpu.reg_F.H = false;
+        cpu.reg_F.N = false;
+        cpu.reg_A = 0x00;
+
+        cpu.executeOp();
+
+        assertEquals(0xFF, cpu.reg_A);
+        assertTrue(cpu.reg_F.N);
+        assertTrue(cpu.reg_F.H);
+
+        cpu.executeOp();
+
+        assertEquals(0x00, cpu.reg_A);
+
+        cpu.reg_A = 0b10101010;
+
+        cpu.executeOp();
+
+        assertEquals(0b01010101, cpu.reg_A);
+
+        cpu.executeOp();
+
+        assertEquals(0b10101010, cpu.reg_A);
+    }
+
+    @Test
+    public void incHLAddr() {
+
+        Z80 cpu = new Z80();
+        Memory aMem = new TestMemory();
+        cpu.init(aMem, new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0x34);
+        cpu.reg_H = 0x80;
+        cpu.reg_L = 0x00;
+        cpu.loadRam(0x8000, 0x00);
+
+        cpu.reg_F.C = false;
+        cpu.reg_F.Z = true;
+
+        for (int i = 0; i < 512; i++) {
+
+            byte expVal = (byte)i;
+
+            byte prev = (byte) aMem.read8(0x8000);
+
+            cpu.reg_PC = 0x0000;
+            cpu.executeOp();
+
+            byte val = (byte) aMem.read8(0x8000);
+
+            System.out.println("I: " + i + ", I': " + expVal + ", Val: " + val);
+
+            assertEquals(expVal, prev);
+            assertEquals(prev == 0x7F, cpu.reg_F.P);
+
+            assertEquals(val < 0, cpu.reg_F.S);
+            assertEquals(val == 0, cpu.reg_F.Z);
+            assertEquals((val&0x0F) == 0x00, cpu.reg_F.H);
+            assertEquals(false, cpu.reg_F.N);
+            assertEquals(false, cpu.reg_F.C);
+        }
+    }
+
+    @Test
+    public void decHLAddr() {
+
+        Z80 cpu = new Z80();
+        Memory aMem = new TestMemory();
+        cpu.init(aMem, new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0x35);
+        cpu.reg_H = 0x80;
+        cpu.reg_L = 0x00;
+        cpu.loadRam(0x8000, 0x00);
+
+        cpu.reg_F.C = false;
+        cpu.reg_F.Z = true;
+
+        for (int i = 0; i > -512; i--) {
+
+            byte expVal = (byte)i;
+
+            byte prev = (byte) aMem.read8(0x8000);
+
+            cpu.reg_PC = 0x0000;
+            cpu.executeOp();
+
+            byte val = (byte) aMem.read8(0x8000);
+
+            System.out.println("I: " + i + ", I': " + expVal + ", Val: " + val);
+
+            assertEquals(expVal, prev);
+            assertEquals(val == 0x7F, cpu.reg_F.P);
+
+            assertEquals(val < 0, cpu.reg_F.S);
+            assertEquals(val == 0, cpu.reg_F.Z);
+            assertEquals((val&0x0F) == 0x0F, cpu.reg_F.H);
+            assertEquals(true, cpu.reg_F.N);
+            assertEquals(false, cpu.reg_F.C);
+        }
+    }
+
+
+
 
 
     private String hex8(int val) {
