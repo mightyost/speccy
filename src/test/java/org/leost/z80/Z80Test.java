@@ -581,6 +581,173 @@ public class Z80Test {
         }
     }
 
+    @Test
+    public void add() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0x80, 0x80, 0x80);
+
+        for (int a = 0; a < 256; a++) {
+            for (int s = 0; s < 256; s++) {
+                cpu.reg_A = a;
+                cpu.reg_B = s;
+
+                cpu.reg_PC = 0x0000;
+                cpu.executeOp();
+
+                int res16 = a+s;
+                byte res8 = (byte) (a+s);
+
+                assertEquals(res8, cpu.reg_A);
+                assertEquals(res8 < 0, cpu.reg_F.S);
+                assertEquals(res8 == 0, cpu.reg_F.Z);
+                assertEquals(false, cpu.reg_F.N);
+                assertEquals(res16 > 255, cpu.reg_F.C);
+            }
+        }
+    }
+
+    @Test
+    public void adc() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0x88, 0x88, 0x88);
+
+        for (int a = 0; a < 256; a++) {
+            for (int s = 0; s < 256; s++) {
+                for (int c = 0; c < 2; c++) {
+
+                    cpu.reg_F.C = c == 1;
+                    cpu.reg_A = a;
+                    cpu.reg_B = s;
+
+                    cpu.reg_PC = 0x0000;
+                    cpu.executeOp();
+
+                    int res16 = a+s+c;
+                    byte res8 = (byte) (a+s+c);
+
+                    assertEquals(res8, cpu.reg_A);
+                    assertEquals(res8 < 0, cpu.reg_F.S);
+                    assertEquals(res8 == 0, cpu.reg_F.Z);
+                    assertEquals(false, cpu.reg_F.N);
+                    assertEquals(res16 > 255, cpu.reg_F.C);
+                }
+            }
+        }
+    }
+
+    @Test
+    public void and() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0xA0, 0xA0, 0xA0);
+
+        for (int a = 0; a < 256; a++) {
+            for (int s = 0; s < 256; s++) {
+
+                cpu.reg_A = a;
+                cpu.reg_B = s;
+
+                cpu.reg_PC = 0x0000;
+                cpu.executeOp();
+
+                int res16 = a&s;
+                byte res8 = (byte) (a&s);
+
+                assertEquals(res8, cpu.reg_A);
+                assertEquals(res8 < 0, cpu.reg_F.S);
+                assertEquals(res8 == 0, cpu.reg_F.Z);
+                assertEquals((Integer.bitCount(res16&0xff)& 0x01) > 0, cpu.reg_F.P);
+                assertEquals(true, cpu.reg_F.H);
+                assertEquals(false, cpu.reg_F.N);
+                assertEquals(false, cpu.reg_F.C);
+            }
+        }
+    }
+
+    @Test
+    public void retnz() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0xC0, 0xC0);
+        cpu.reg_SP = 0x1000;
+        cpu.loadRam(0x1000, 0xB0, 0xA0);
+
+        cpu.reg_F.Z = true;
+        cpu.executeOp();
+
+        assertEquals(0x0001, cpu.reg_PC);
+        assertEquals(0x1000, cpu.reg_SP);
+
+        cpu.reg_F.Z = false;
+        cpu.executeOp();
+
+        assertEquals(0xA0B0, cpu.reg_PC);
+        assertEquals(0x1002, cpu.reg_SP);
+    }
+
+    @Test
+    public void pushpop() {
+        Memory mem = new TestMemory();
+        Z80 cpu = new Z80();
+        cpu.init(mem, new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0xC5, 0xC5, 0xC1, 0xC1);
+        cpu.reg_SP = 0x1000;
+        cpu.loadRam(0x1000, 0xFF, 0xFF);
+
+        cpu.reg_B = 0x10;
+        cpu.reg_C = 0x20;
+
+        cpu.executeOp();
+
+        assertEquals(0x0001, cpu.reg_PC);
+        assertEquals(0x1000 - 2, cpu.reg_SP);
+        assertEquals(0x10, mem.read8(0x1000-1));
+        assertEquals(0x20, mem.read8(0x1000 - 2));
+
+        cpu.reg_B = 0x30;
+        cpu.reg_C = 0x40;
+
+        cpu.executeOp();
+
+        assertEquals(0x0002, cpu.reg_PC);
+        assertEquals(0x1000 - 4, cpu.reg_SP);
+        assertEquals(0x30, mem.read8(0x1000-3));
+        assertEquals(0x40, mem.read8(0x1000 - 4));
+
+        cpu.reg_B = 0xFF;
+        cpu.reg_C = 0xFF;
+
+        cpu.executeOp();
+
+        assertEquals(0x0003, cpu.reg_PC);
+        assertEquals(0x1000-2, cpu.reg_SP);
+        assertEquals(0x30, cpu.reg_B);
+        assertEquals(0x40, cpu.reg_C);
+
+        cpu.executeOp();
+
+        assertEquals(0x0004, cpu.reg_PC);
+        assertEquals(0x1000, cpu.reg_SP);
+        assertEquals(0x10, cpu.reg_B);
+        assertEquals(0x20, cpu.reg_C);
+    }
+
 
 
 
