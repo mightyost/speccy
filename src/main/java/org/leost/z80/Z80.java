@@ -18,6 +18,17 @@ public class Z80 {
                 toInt(N) << 1 |
                 toInt(C) << 0;
         }
+
+        void value(int val8) {
+            S = bit(val8, 7) > 0;
+            Z = bit(val8, 6) > 0;
+            Y = bit(val8, 5) > 0;
+            H = bit(val8, 4) > 0;
+            X = bit(val8, 3) > 0;
+            P = bit(val8, 2) > 0;
+            N = bit(val8, 1) > 0;
+            C = bit(val8, 0) > 0;
+        }
     }
 
     protected int reg_A, reg_B, reg_C, reg_D, reg_E, reg_H, reg_L;  // Main register set
@@ -32,9 +43,9 @@ public class Z80 {
     protected int reg_SP;         // Stack Pointer
     protected int reg_PC;         // Program pointer
 
-    protected int opAddr;       // Program pointer for last op code
+    protected int opAddr;         // Program pointer for last op code
 
-    protected int IFF1, IFF2;     // The two interrupt flip-flops
+    protected boolean IFF1, IFF2; // The two interrupt flip-flops
 
     private Memory mem;
     private IO io;
@@ -58,6 +69,10 @@ public class Z80 {
         return to16(reg_H, reg_L);
     }
 
+    private int AF() {
+        return to16(reg_A, reg_F.value());
+    }
+
     private void BC(int val16) {
         reg_B = high8(val16);
         reg_C = low8(val16);
@@ -71,6 +86,11 @@ public class Z80 {
     private void HL(int val16) {
         reg_H = high8(val16);
         reg_L = low8(val16);
+    }
+
+    private void AF(int val16) {
+        reg_A = high8(val16);
+        reg_F.value(low8(val16));
     }
 
     private int to16(int h8, int l8) {
@@ -120,7 +140,7 @@ public class Z80 {
 
 
     protected void executeOp() {
-        int n, nn;
+        int n, nn, h, l;
         Flags f;
 
         int code = readOp();
@@ -1175,7 +1195,144 @@ public class Z80 {
                 logOp("PUSH BC");
                 break;
 
+            case 0xC6:  // ADD A, n
+                n = readN();
+                reg_A = add8(reg_A, n);
+                logOp("ADD A, %s", hex8(n));
+                break;
 
+            case 0xC7:  // RST 0x00
+                push16(reg_PC);
+                reg_PC = 0x00;
+                logOp("RST 0x00");
+                break;
+
+            case 0xC8:  // RET Z
+                if (reg_F.Z) {
+                    reg_PC = pop16();
+                }
+                logOp("RET Z");
+                break;
+
+            case 0xC9:  // RET
+                reg_PC = pop16();
+                logOp("RET");
+                break;
+
+            case 0xCA: // JP Z, nn
+                nn = readNn();
+                if (reg_F.Z) {
+                    reg_PC = nn;
+                }
+                logOp("JP Z, %s", hex16(nn));
+                break;
+
+// CB#
+
+            case 0xCC: // CALL Z, nn
+                nn = readNn();
+                if (reg_F.Z) {
+                    push16(reg_PC);
+                    reg_PC = nn;
+                }
+                logOp("CALL Z, %s", hex16(nn));
+                break;
+
+            case 0xCD: // CALL nn
+                nn = readNn();
+                push16(reg_PC);
+                reg_PC = nn;
+                logOp("CALL %s", hex16(nn));
+                break;
+
+            case 0xCE:  // ADC A, n
+                n = readN();
+                reg_A = adc8(reg_A, n);
+                logOp("ADC A, %s", hex8(n));
+                break;
+
+            case 0xCF:  // RST 0x08
+                push16(reg_PC);
+                reg_PC = 0x08;
+                logOp("RST 0x08");
+                break;
+
+            case 0xD0:  // RET NZ
+                if (!reg_F.Z) {
+                    reg_PC = pop16();
+                }
+                logOp("RET NZ");
+                break;
+
+            case 0xD1: // POP DE
+                DE(pop16());
+                logOp("POP DE");
+                break;
+
+            case 0xD2: // JP NC, nn
+                nn = readNn();
+                if (!reg_F.C) {
+                    reg_PC = nn;
+                }
+                logOp("JP NC, %s", hex16(nn));
+                break;
+
+            case 0xD3: // OUT (n), A
+                n = readN();
+                io.out8(n, reg_A);
+                logOp("OUT (%n), A", hex8(n));
+                break;
+
+            case 0xD4: // CALL NC, nn
+                nn = readNn();
+                if (!reg_F.C) {
+                    push16(reg_PC);
+                    reg_PC = nn;
+                }
+                logOp("CALL NC, %s", hex16(nn));
+                break;
+
+            case 0xD5: // PUSH DE
+                push16(DE());
+                logOp("PUSH DE");
+                break;
+
+            case 0xD6:  // SUB n
+                n = readN();
+                reg_A = sub8(reg_A, n);
+                logOp("SUB %s", hex8(n));
+                break;
+
+            case 0xD7:  // RST 0x10
+                push16(reg_PC);
+                reg_PC = 0x10;
+                logOp("RST 0x10");
+                break;
+
+            case 0xD8:  // RET C
+                if (reg_F.C) {
+                    reg_PC = pop16();
+                }
+                logOp("RET C");
+                break;
+
+            case 0xD9: // EXX
+                n = reg_B; reg_B = reg_b; reg_b = n;
+                n = reg_C; reg_C = reg_c; reg_c = n;
+                n = reg_D; reg_D = reg_d; reg_d = n;
+                n = reg_E; reg_E = reg_e; reg_e = n;
+                n = reg_H; reg_H = reg_h; reg_h = n;
+                n = reg_L; reg_L = reg_l; reg_l = n;
+                logOp("EXX");
+                break;
+
+            case 0xDA: // JP C, nn
+                nn = readNn();
+                if (reg_F.C) {
+                    reg_PC = nn;
+                }
+                logOp("JP C, %s", hex16(nn));
+                break;
 
             case 0xDB:  // IN A, (n)
                 n = readN();
@@ -1183,16 +1340,237 @@ public class Z80 {
                 logOp("IN A, (%s)", n);
                 break;
 
+            case 0xDC: // CALL C, nn
+                nn = readNn();
+                if (reg_F.C) {
+                    push16(reg_PC);
+                    reg_PC = nn;
+                }
+                logOp("CALL C, %s", hex16(nn));
+                break;
+
             case 0xDD:  // LD w. indexed registers (IX / IY)
                 executeDD();
+                break;
+
+            case 0xDE:  // SBC n
+                n = readN();
+                reg_A = sbc8(reg_A, n);
+                logOp("SBC %s", hex8(n));
+                break;
+
+            case 0xDF:  // RST 0x18
+                push16(reg_PC);
+                reg_PC = 0x18;
+                logOp("RST 0x18");
+                break;
+
+            case 0xE0:  // RET PO
+                if (!reg_F.P) {
+                    reg_PC = pop16();
+                }
+                logOp("RET PO");
+                break;
+
+            case 0xE1: // POP HL
+                HL(pop16());
+                logOp("POP HL");
+                break;
+
+            case 0xE2: // JP PO, nn
+                nn = readNn();
+                if (!reg_F.P) {
+                    reg_PC = nn;
+                }
+                logOp("JP PO, %s", hex16(nn));
+                break;
+
+            case 0xE3: // EX (SP), HL
+                h = reg_H;
+                l = reg_L;
+                reg_L = mem.read8(reg_SP+0);
+                reg_H = mem.read8(reg_SP+1);
+                mem.write8(reg_SP+0, l);
+                mem.write8(reg_SP+1, h);
+                logOp("EX (SP), HL");
+                break;
+
+            case 0xE4: // CALL PO, nn
+                nn = readNn();
+                if (!reg_F.P) {
+                    push16(reg_PC);
+                    reg_PC = nn;
+                }
+                logOp("CALL NZ, %s", hex16(nn));
+                break;
+
+            case 0xE5: // PUSH HL
+                push16(HL());
+                logOp("PUSH HL");
+                break;
+
+            case 0xE6:  // AND n
+                n = readN();
+                reg_A = and8(reg_A, n);
+                logOp("AND %s", hex8(n));
+                break;
+
+            case 0xE7:  // RST 0x20
+                push16(reg_PC);
+                reg_PC = 0x20;
+                logOp("RST 0x20");
+                break;
+
+            case 0xE8:  // RET PE
+                if (reg_F.P) {
+                    reg_PC = pop16();
+                }
+                logOp("RET PE");
+                break;
+
+            case 0xE9: // JP (HL)
+                reg_PC = HL();
+                logOp("JP (HL)");
+                break;
+
+            case 0xEA: // JP PE, nn
+                nn = readNn();
+                if (reg_F.P) {
+                    reg_PC = nn;
+                }
+                logOp("JP PE, %s", hex16(nn));
+                break;
+
+            case 0xEB: // EX DE, HL
+                n = reg_H; reg_H = reg_D; reg_D = n;
+                n = reg_L; reg_L = reg_E; reg_E = n;
+                logOp("EXX");
+                break;
+
+            case 0xEC: // CALL PE, nn
+                nn = readNn();
+                if (reg_F.P) {
+                    push16(reg_PC);
+                    reg_PC = nn;
+                }
+                logOp("CALL PE, %s", hex16(nn));
                 break;
 
             case 0xED:
                 executeED();
                 break;
 
+            case 0xEE: // XOR n
+                n = readN();
+                reg_A = xor8(reg_A, n);
+                logOp("XOR %s", hex8(n));
+                break;
+
+            case 0xEF:  // RST 0x28
+                push16(reg_PC);
+                reg_PC = 0x28;
+                logOp("RST 0x28");
+                break;
+
+            case 0xF0:  // RET P
+                if (!reg_F.S) {
+                    reg_PC = pop16();
+                }
+                logOp("RET P");
+                break;
+
+            case 0xF1: // POP AF
+                AF(pop16());
+                logOp("POP AF");
+                break;
+
+            case 0xF2: // JP P, nn
+                nn = readNn();
+                if (!reg_F.S) {
+                    reg_PC = nn;
+                }
+                logOp("JP Z, %s", hex16(nn));
+                break;
+
+            case 0xF3: // DI
+                IFF1 = IFF2 = false;
+                logOp("DI");
+                break;
+
+            case 0xF4: // CALL P, nn
+                nn = readNn();
+                if (!reg_F.S) {
+                    push16(reg_PC);
+                    reg_PC = nn;
+                }
+                logOp("CALL P, %s", hex16(nn));
+                break;
+
+            case 0xF5: // PUSH AF
+                push16(AF());
+                logOp("PUSH AF");
+                break;
+
+            case 0xF6: // OR n
+                n = readN();
+                reg_A = or8(reg_A, n);
+                logOp("OR %s", hex8(n));
+                break;
+
+            case 0xF7:  // RST 0x30
+                push16(reg_PC);
+                reg_PC = 0x30;
+                logOp("RST 0x30");
+                break;
+
+            case 0xF8:  // RET M
+                if (reg_F.S) {
+                    reg_PC = pop16();
+                }
+                logOp("RET M");
+                break;
+
+            case 0xF9:  // LD SP, HL
+                reg_SP = HL();
+                logOp("LD SP, HL");
+                break;
+
+            case 0xFA: // JP M, nn
+                nn = readNn();
+                if (reg_F.S) {
+                    reg_PC = nn;
+                }
+                logOp("JP M, %s", hex16(nn));
+                break;
+
+            case 0xFB: // EI
+                IFF1 = IFF2 = true;
+                logOp("EI");
+                break;
+
+            case 0xFC: // CALL M, nn
+                nn = readNn();
+                if (reg_F.S) {
+                    push16(reg_PC);
+                    reg_PC = nn;
+                }
+                logOp("CALL M, %s", hex16(nn));
+                break;
+
             case 0xFD:  // LD w. indexed registers (IX / IY)
                 executeFD();
+                break;
+
+            case 0xFE: // CP n
+                n = readN();
+                sub8(reg_A, n);
+                logOp("CP %s", hex8(n));
+                break;
+
+            case 0xFF:  // RST 0x38
+                push16(reg_PC);
+                reg_PC = 0x38;
+                logOp("RST 0x38");
                 break;
 
             default:
@@ -1342,7 +1720,7 @@ public class Z80 {
                 reg_F.S = reg_I < 0;
                 reg_F.Z = reg_I == 0;
                 reg_F.H = false;
-                reg_F.P = IFF2 == 1;
+                reg_F.P = IFF2;
                 reg_F.N = false;
                 break;
 
@@ -1360,7 +1738,7 @@ public class Z80 {
                 reg_F.S = reg_R < 0;
                 reg_F.Z = reg_R == 0;
                 reg_F.H = false;
-                reg_F.P = IFF2 == 1;
+                reg_F.P = IFF2;
                 reg_F.N = false;
                 break;
 
@@ -1655,7 +2033,7 @@ public class Z80 {
     }
 
     private boolean parity8(int val8) {
-        return (Integer.bitCount(val8 & 0xFF) & 0x01) > 0;
+        return (Integer.bitCount(val8 & 0xFF) & 0x01) == 0;
     }
 
     private int toInt(boolean val) {

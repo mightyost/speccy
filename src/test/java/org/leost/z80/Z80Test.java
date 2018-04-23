@@ -667,7 +667,7 @@ public class Z80Test {
                 assertEquals(res8, cpu.reg_A);
                 assertEquals(res8 < 0, cpu.reg_F.S);
                 assertEquals(res8 == 0, cpu.reg_F.Z);
-                assertEquals((Integer.bitCount(res16&0xff)& 0x01) > 0, cpu.reg_F.P);
+                assertEquals((Integer.bitCount(res16&0xff)& 0x01) == 0, cpu.reg_F.P);
                 assertEquals(true, cpu.reg_F.H);
                 assertEquals(false, cpu.reg_F.N);
                 assertEquals(false, cpu.reg_F.C);

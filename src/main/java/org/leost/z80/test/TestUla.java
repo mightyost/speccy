@@ -14,11 +14,11 @@ public class TestUla implements IO {
     }
 
     @Override
-    public int in8(int port16) {
+    public int in8(int port8) {
         return 0;
     }
 
     @Override
-    public void out8(int port16, int val8) {
+    public void out8(int port8, int val8) {
     }
 }
