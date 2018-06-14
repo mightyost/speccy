@@ -45,6 +45,7 @@ public class Z80 {
 
     protected int opAddr;         // Program pointer for last op code
 
+    protected int IM = 0;         // Interrupt mode
     protected boolean IFF1, IFF2; // The two interrupt flip-flops
 
     private Memory mem;
@@ -55,6 +56,20 @@ public class Z80 {
     public void init(Memory mem, IO io) {
         this.mem = mem;
         this.io = io;
+
+
+        reset();
+    }
+
+    public void reset() {
+        reg_PC = 0;
+        reg_SP = 0xFFFF;
+        IFF1 = false;
+        IFF2 = false;
+        reg_A = reg_B = reg_C = reg_D = reg_E = reg_H = reg_L = 0xFF;
+        reg_a = reg_b = reg_c = reg_d = reg_e = reg_h = reg_l = 0xFF;
+        reg_F.value(0xFF);
+        IM = 0;
     }
 
     private int BC() {
@@ -1227,7 +1242,9 @@ public class Z80 {
                 logOp("JP Z, %s", hex16(nn));
                 break;
 
-// CB#
+            case 0xCB:
+                executeCB();
+                break;
 
             case 0xCC: // CALL Z, nn
                 nn = readNn();
@@ -1579,113 +1596,744 @@ public class Z80 {
         }
     }
 
+    private void executeCB() {
+        int d, n, r, b = 0;
+
+        int code = readOp();
+
+        switch (code) {
+            case 0x00:  // RLC B
+                reg_B = rlc8(reg_B);
+                logOp("RLC B");
+                break;
+
+            case 0x01:  // RLC C
+                reg_C = rlc8(reg_C);
+                logOp("RLC C");
+                break;
+
+            case 0x02:  // RLC D
+                reg_D = rlc8(reg_D);
+                logOp("RLC D");
+                break;
+
+            case 0x03:  // RLC E
+                reg_E = rlc8(reg_E);
+                logOp("RLC E");
+                break;
+
+            case 0x04:  // RLC H
+                reg_H = rlc8(reg_H);
+                logOp("RLC H");
+                break;
+
+            case 0x05:  // RLC L
+                reg_L = rlc8(reg_L);
+                logOp("RLC L");
+                break;
+
+            case 0x06:  // RLC (HL)
+                n = mem.read8(HL());
+                n = rlc8(n);
+                mem.write8(HL(), n);
+                logOp("RLC (HL)");
+                break;
+
+            case 0x07:  // RLC A
+                reg_A = rlc8(reg_A);
+                logOp("RLC A");
+                break;
+
+            case 0x08:  // RRC B
+                reg_B = rrc8(reg_B);
+                logOp("RRC B");
+                break;
+
+            case 0x09:  // RRC C
+                reg_C = rrc8(reg_C);
+                logOp("RRC C");
+                break;
+
+            case 0x0A:  // RRC D
+                reg_D = rrc8(reg_D);
+                logOp("RRC D");
+                break;
+
+            case 0x0B:  // RRC E
+                reg_E = rrc8(reg_E);
+                logOp("RRC E");
+                break;
+
+            case 0x0C:  // RRC H
+                reg_H = rrc8(reg_H);
+                logOp("RRC H");
+                break;
+
+            case 0x0D:  // RRC L
+                reg_L = rrc8(reg_L);
+                logOp("RRC L");
+                break;
+
+            case 0x0E:  // RRC (HL)
+                n = mem.read8(HL());
+                n = rrc8(n);
+                mem.write8(HL(), n);
+                logOp("RRC (HL)");
+                break;
+
+            case 0x0F:  // RRC A
+                reg_A = rrc8(reg_A);
+                logOp("RRC A");
+                break;
+
+            case 0x10:  // RL B
+                reg_B = rl8(reg_B);
+                logOp("RL B");
+                break;
+
+            case 0x11:  // RL C
+                reg_C = rl8(reg_C);
+                logOp("RL C");
+                break;
+
+            case 0x12:  // RL D
+                reg_D = rl8(reg_D);
+                logOp("RL D");
+                break;
+
+            case 0x13:  // RL E
+                reg_E = rl8(reg_E);
+                logOp("RL E");
+                break;
+
+            case 0x14:  // RL H
+                reg_H = rl8(reg_H);
+                logOp("RL H");
+                break;
+
+            case 0x15:  // RL L
+                reg_L = rl8(reg_L);
+                logOp("RL L");
+                break;
+
+            case 0x16:  // RL (HL)
+                n = mem.read8(HL());
+                n = rl8(n);
+                mem.write8(HL(), n);
+                logOp("RL (HL)");
+                break;
+
+            case 0x17:  // RL A
+                reg_A = rl8(reg_A);
+                logOp("RL A");
+                break;
+
+            case 0x18:  // RR B
+                reg_B = rr8(reg_B);
+                logOp("RR B");
+                break;
+
+            case 0x19:  // RR C
+                reg_C = rr8(reg_C);
+                logOp("RR C");
+                break;
+
+            case 0x1A:  // RR D
+                reg_D = rr8(reg_D);
+                logOp("RR D");
+                break;
+
+            case 0x1B:  // RR E
+                reg_E = rr8(reg_E);
+                logOp("RR E");
+                break;
+
+            case 0x1C:  // RR H
+                reg_H = rr8(reg_H);
+                logOp("RR H");
+                break;
+
+            case 0x1D:  // RR L
+                reg_L = rr8(reg_L);
+                logOp("RR L");
+                break;
+
+            case 0x1E:  // RR (HL)
+                n = mem.read8(HL());
+                n = rr8(n);
+                mem.write8(HL(), n);
+                logOp("RR (HL)");
+                break;
+
+            case 0x1F:  // RR A
+                reg_A = rr8(reg_A);
+                logOp("RR A");
+                break;
+
+            case 0x20:  // SLA B
+                reg_B = sla8(reg_B);
+                logOp("SLA B");
+                break;
+
+            case 0x21:  // SLA C
+                reg_C = sla8(reg_C);
+                logOp("SLA C");
+                break;
+
+            case 0x22:  // SLA D
+                reg_D = sla8(reg_D);
+                logOp("SLA D");
+                break;
+
+            case 0x23:  // SLA E
+                reg_E = sla8(reg_E);
+                logOp("SLA E");
+                break;
+
+            case 0x24:  // SLA H
+                reg_H = sla8(reg_H);
+                logOp("SLA H");
+                break;
+
+            case 0x25:  // SLA L
+                reg_L = sla8(reg_L);
+                logOp("SLA L");
+                break;
+
+            case 0x26:  // SLA (HL)
+                n = mem.read8(HL());
+                n = sla8(n);
+                mem.write8(HL(), n);
+                logOp("SLA (HL)");
+                break;
+
+            case 0x27:  // SLA A
+                reg_A = sla8(reg_A);
+                logOp("SLA A");
+                break;
+
+            case 0x28:  // SRA B
+                reg_B = sra8(reg_B);
+                logOp("SRA B");
+                break;
+
+            case 0x29:  // SRA C
+                reg_C = sra8(reg_C);
+                logOp("SRA C");
+                break;
+
+            case 0x2A:  // SRA D
+                reg_D = sra8(reg_D);
+                logOp("SRA D");
+                break;
+
+            case 0x2B:  // SRA E
+                reg_E = sra8(reg_E);
+                logOp("SRA E");
+                break;
+
+            case 0x2C:  // SRA H
+                reg_H = sra8(reg_H);
+                logOp("SRA H");
+                break;
+
+            case 0x2D:  // SRA L
+                reg_L = sra8(reg_L);
+                logOp("SRA L");
+                break;
+
+            case 0x2E:  // SRA (HL)
+                n = mem.read8(HL());
+                n = sra8(n);
+                mem.write8(HL(), n);
+                logOp("SRA (HL)");
+                break;
+
+            case 0x2F:  // SRA A
+                reg_A = sra8(reg_A);
+                logOp("SRA A");
+                break;
+
+            case 0x30:  // SLL B
+                reg_B = sll8(reg_B);
+                logOp("SLL B");
+                break;
+
+            case 0x31:  // SLL C
+                reg_C = sll8(reg_C);
+                logOp("SLL C");
+                break;
+
+            case 0x32:  // SLL D
+                reg_D = sll8(reg_D);
+                logOp("SLL D");
+                break;
+
+            case 0x33:  // SLL E
+                reg_E = sll8(reg_E);
+                logOp("SLL E");
+                break;
+
+            case 0x34:  // SLL H
+                reg_H = sll8(reg_H);
+                logOp("SLL H");
+                break;
+
+            case 0x35:  // SLL L
+                reg_L = sll8(reg_L);
+                logOp("SLL L");
+                break;
+
+            case 0x36:  // SLL (HL)
+                n = mem.read8(HL());
+                n = sll8(n);
+                mem.write8(HL(), n);
+                logOp("SLL (HL)");
+                break;
+
+            case 0x37:  // SLL A
+                reg_A = sll8(reg_A);
+                logOp("SLL A");
+                break;
+
+            case 0x38:  // SRL B
+                reg_B = srl8(reg_B);
+                logOp("SRL B");
+                break;
+
+            case 0x39:  // SRL C
+                reg_C = srl8(reg_C);
+                logOp("SRL C");
+                break;
+
+            case 0x3A:  // SRL D
+                reg_D = srl8(reg_D);
+                logOp("SRL D");
+                break;
+
+            case 0x3B:  // SRL E
+                reg_E = srl8(reg_E);
+                logOp("SRL E");
+                break;
+
+            case 0x3C:  // SRL H
+                reg_H = srl8(reg_H);
+                logOp("SRL H");
+                break;
+
+            case 0x3D:  // SRL L
+                reg_L = srl8(reg_L);
+                logOp("SRL L");
+                break;
+
+            case 0x3E:  // SRL (HL)
+                n = mem.read8(HL());
+                n = srl8(n);
+                mem.write8(HL(), n);
+                logOp("SRL (HL)");
+                break;
+
+            case 0x3F:  // SRL A
+                reg_A = srl8(reg_A);
+                logOp("SRL A");
+                break;
+
+            case 0x40:  // BIT 0, B
+            case 0x41:  // BIT 0, C
+            case 0x42:  // BIT 0, D
+            case 0x43:  // BIT 0, E
+            case 0x44:  // BIT 0, H
+            case 0x45:  // BIT 0, L
+            case 0x47:  // BIT 0, A
+            case 0x48:  // BIT 1, B
+            case 0x49:  // BIT 1, C
+            case 0x4A:  // BIT 1, D
+            case 0x4B:  // BIT 1, E
+            case 0x4C:  // BIT 1, H
+            case 0x4D:  // BIT 1, L
+            case 0x4F:  // BIT 1, A
+            case 0x50:  // BIT 2, B
+            case 0x51:  // BIT 2, C
+            case 0x52:  // BIT 2, D
+            case 0x53:  // BIT 2, E
+            case 0x54:  // BIT 2, H
+            case 0x55:  // BIT 2, L
+            case 0x57:  // BIT 2, A
+            case 0x58:  // BIT 3, B
+            case 0x59:  // BIT 3, C
+            case 0x5A:  // BIT 3, D
+            case 0x5B:  // BIT 3, E
+            case 0x5C:  // BIT 3, H
+            case 0x5D:  // BIT 3, L
+            case 0x5F:  // BIT 3, A
+            case 0x60:  // BIT 4, B
+            case 0x61:  // BIT 4, C
+            case 0x62:  // BIT 4, D
+            case 0x63:  // BIT 4, E
+            case 0x64:  // BIT 4, H
+            case 0x65:  // BIT 4, L
+            case 0x67:  // BIT 4, A
+            case 0x68:  // BIT 5, B
+            case 0x69:  // BIT 5, C
+            case 0x6A:  // BIT 5, D
+            case 0x6B:  // BIT 5, E
+            case 0x6C:  // BIT 5, H
+            case 0x6D:  // BIT 5, L
+            case 0x6F:  // BIT 5, A
+            case 0x70:  // BIT 6, B
+            case 0x71:  // BIT 6, C
+            case 0x72:  // BIT 6, D
+            case 0x73:  // BIT 6, E
+            case 0x74:  // BIT 6, H
+            case 0x75:  // BIT 6, L
+            case 0x77:  // BIT 6, A
+            case 0x78:  // BIT 7, B
+            case 0x79:  // BIT 7, C
+            case 0x7A:  // BIT 7, D
+            case 0x7B:  // BIT 7, E
+            case 0x7C:  // BIT 7, H
+            case 0x7D:  // BIT 7, L
+            case 0x7F:  // BIT 7, A
+                r = code & 0x07;
+                bit8((code >> 3) & 0x07, readReg8Val(r));
+                logOp("BIT %s, %s", (code >> 3) & 0x07, reg8Name(r));
+                break;
+
+            case 0x4E:  // BIT 1, (HL)
+            case 0x56:  // BIT 2, (HL)
+            case 0x5E:  // BIT 3, (HL)
+            case 0x66:  // BIT 4, (HL)
+            case 0x6E:  // BIT 5, (HL)
+            case 0x76:  // BIT 6, (HL)
+            case 0x7E:  // BIT 7, (HL)
+                bit8((code >> 3) & 0x07, mem.read8(HL()));
+                logOp("BIT %s, (HL)", (code >> 3) & 0x07);
+                break;
+
+            case 0x80:  // RES 0, B
+            case 0x81:  // RES 0, C
+            case 0x82:  // RES 0, D
+            case 0x83:  // RES 0, E
+            case 0x84:  // RES 0, H
+            case 0x85:  // RES 0, L
+            case 0x87:  // RES 0, A
+            case 0x88:  // RES 1, B
+            case 0x89:  // RES 1, C
+            case 0x8A:  // RES 1, D
+            case 0x8B:  // RES 1, E
+            case 0x8C:  // RES 1, H
+            case 0x8D:  // RES 1, L
+            case 0x8F:  // RES 1, A
+            case 0x90:  // RES 2, B
+            case 0x91:  // RES 2, C
+            case 0x92:  // RES 2, D
+            case 0x93:  // RES 2, E
+            case 0x94:  // RES 2, H
+            case 0x95:  // RES 2, L
+            case 0x97:  // RES 2, A
+            case 0x98:  // RES 3, B
+            case 0x99:  // RES 3, C
+            case 0x9A:  // RES 3, D
+            case 0x9B:  // RES 3, E
+            case 0x9C:  // RES 3, H
+            case 0x9D:  // RES 3, L
+            case 0x9F:  // RES 3, A
+            case 0xA0:  // RES 4, B
+            case 0xA1:  // RES 4, C
+            case 0xA2:  // RES 4, D
+            case 0xA3:  // RES 4, E
+            case 0xA4:  // RES 4, H
+            case 0xA5:  // RES 4, L
+            case 0xA7:  // RES 4, A
+            case 0xA8:  // RES 5, B
+            case 0xA9:  // RES 5, C
+            case 0xAA:  // RES 5, D
+            case 0xAB:  // RES 5, E
+            case 0xAC:  // RES 5, H
+            case 0xAD:  // RES 5, L
+            case 0xAF:  // RES 5, A
+            case 0xB0:  // RES 6, B
+            case 0xB1:  // RES 6, C
+            case 0xB2:  // RES 6, D
+            case 0xB3:  // RES 6, E
+            case 0xB4:  // RES 6, H
+            case 0xB5:  // RES 6, L
+            case 0xB7:  // RES 6, A
+            case 0xB8:  // RES 7, B
+            case 0xB9:  // RES 7, C
+            case 0xBA:  // RES 7, D
+            case 0xBB:  // RES 7, E
+            case 0xBC:  // RES 7, H
+            case 0xBD:  // RES 7, L
+            case 0xBF:  // RES 7, A
+                b = (code >> 3) & 0x07;
+                r = (code >> 0) & 0x07;
+                n = res8(b, readReg8Val(r));
+                writeReg8Val(r, n);
+                logOp("RES %s, %s", b, reg8Name(r));
+                break;
+
+            case 0x86:  // RES 0, (HL)
+            case 0x8E:  // RES 1, (HL)
+            case 0x96:  // RES 2, (HL)
+            case 0x9E:  // RES 3, (HL)
+            case 0xA6:  // RES 4, (HL)
+            case 0xAE:  // RES 5, (HL)
+            case 0xB6:  // RES 6, (HL)
+            case 0xBE:  // RES 7, (HL)
+                b = (code >> 3) & 0x07;
+                n = res8(b, HL());
+                HL(n);
+                logOp("RES %s, (HL)", b);
+                break;
+
+            case 0xC0:  // SET 0, B
+            case 0xC1:  // SET 0, C
+            case 0xC2:  // SET 0, D
+            case 0xC3:  // SET 0, E
+            case 0xC4:  // SET 0, H
+            case 0xC5:  // SET 0, L
+            case 0xC7:  // SET 0, A
+            case 0xC8:  // SET 1, B
+            case 0xC9:  // SET 1, C
+            case 0xCA:  // SET 1, D
+            case 0xCB:  // SET 1, E
+            case 0xCC:  // SET 1, H
+            case 0xCD:  // SET 1, L
+            case 0xCF:  // SET 1, A
+            case 0xD0:  // SET 2, B
+            case 0xD1:  // SET 2, C
+            case 0xD2:  // SET 2, D
+            case 0xD3:  // SET 2, E
+            case 0xD4:  // SET 2, H
+            case 0xD5:  // SET 2, L
+            case 0xD7:  // SET 2, A
+            case 0xD8:  // SET 3, B
+            case 0xD9:  // SET 3, C
+            case 0xDA:  // SET 3, D
+            case 0xDB:  // SET 3, E
+            case 0xDC:  // SET 3, H
+            case 0xDD:  // SET 3, L
+            case 0xDF:  // SET 3, A
+            case 0xE0:  // SET 4, B
+            case 0xE1:  // SET 4, C
+            case 0xE2:  // SET 4, D
+            case 0xE3:  // SET 4, E
+            case 0xE4:  // SET 4, H
+            case 0xE5:  // SET 4, L
+            case 0xE7:  // SET 4, A
+            case 0xE8:  // SET 5, B
+            case 0xE9:  // SET 5, C
+            case 0xEA:  // SET 5, D
+            case 0xEB:  // SET 5, E
+            case 0xEC:  // SET 5, H
+            case 0xED:  // SET 5, L
+            case 0xEF:  // SET 5, A
+            case 0xF0:  // SET 6, B
+            case 0xF1:  // SET 6, C
+            case 0xF2:  // SET 6, D
+            case 0xF3:  // SET 6, E
+            case 0xF4:  // SET 6, H
+            case 0xF5:  // SET 6, L
+            case 0xF7:  // SET 6, A
+            case 0xF8:  // SET 7, B
+            case 0xF9:  // SET 7, C
+            case 0xFA:  // SET 7, D
+            case 0xFB:  // SET 7, E
+            case 0xFC:  // SET 7, H
+            case 0xFD:  // SET 7, L
+            case 0xFF:  // SET 7, A
+                b = (code >> 3) & 0x07;
+                r = (code >> 0) & 0x07;
+                n = set8(b, readReg8Val(r));
+                writeReg8Val(r, n);
+                logOp("SET %s, %s", b, reg8Name(r));
+                break;
+
+            case 0xC6:  // SET 0, (HL)
+            case 0xCE:  // SET 1, (HL)
+            case 0xD6:  // SET 2, (HL)
+            case 0xDE:  // SET 3, (HL)
+            case 0xE6:  // SET 4, (HL)
+            case 0xEE:  // SET 5, (HL)
+            case 0xF6:  // SET 6, (HL)
+            case 0xFE:  // SET 7, (HL)
+                b = (code >> 3) & 0x07;
+                n = set8(b, HL());
+                HL(n);
+                logOp("SET %s, (HL)", b);
+                break;
+
+            default:
+                throw new RuntimeException("Not implemented yet: 0xCB " + hex8(code));
+        }
+    }
+
+
     private void executeDD() {
-        int d = 0;
-        int n = 0;
+        int r, d, pp = 0;
+        int n, nn, adr = 0;
 
         int code = readOp();
 
         switch (code) {
 
+            case 0x09:  // ADD IX, BC
+            case 0x19:  // ADD IX, DE
+            case 0x29:  // ADD IX, IX
+            case 0x39:  // ADD IX, SP
+                pp = (code >> 4) & 0x03;
+                reg_IX = add16(reg_IX, readReg16Val(pp));
+                logOp("ADD IX, %s", hex16(pp));
+                break;
+
+            case 0x21:  // LD IX, nn
+                nn = readNn();
+                reg_IX = nn;
+                logOp("LD IX, %s", hex16(nn));
+                break;
+
+            case 0x22:  // LD (nn), IX
+                nn = readNn();
+                mem.write8(nn, reg_IX);
+                logOp("LD (%s), IX", hex16(nn));
+                break;
+
+            case 0x23:  // INC IX
+                reg_IX = inc16(reg_IX);
+                logOp("INC IX");
+                break;
+
+            case 0x2A:  // LD IX, (nn)
+                nn = readNn();
+                reg_IX = mem.read8(nn);
+                logOp("LD IX, (%s)", hex16(nn));
+                break;
+
+            case 0x2B:  // DEC IX
+                reg_IX = dec16(reg_IX);
+                logOp("DEC IX");
+                break;
+
+            case 0x34:  // INC (IX+d)
+                d = readN();
+                adr = reg_IX + (byte) d;
+                n = inc8(mem.read8(adr));
+                mem.write8(adr, n);
+                logOp("INC (IX + %s)", hex8(d));
+                break;
+
+            case 0x35:  // DEC (IX+d)
+                d = readN();
+                adr = reg_IX + (byte) d;
+                n = dec8(mem.read8(adr));
+                mem.write8(adr, n);
+                logOp("DEC (IX + %s)", hex8(d));
+                break;
+
             case 0x3A:  // LD A, (nn)
                 int nL = readOp();
                 int nH = readOp();
-                reg_A = mem.read8(nH << 8 | nL);
+                nn = nH << 8 | nL;
+                reg_A = mem.read8(nn);
+                logOp("LD A, (%s))", hex8(nn));
                 break;
 
             case 0x46:  // LD B, (IX + d)
-                d = readOp();
-                reg_B = mem.read8(reg_IX + (byte) d);
-                break;
-
             case 0x4E:  // LD C, (IX + d)
-                d = readOp();
-                reg_C = mem.read8(reg_IX + (byte) d);
-                break;
-
             case 0x56:  // LD D, (IX + d)
-                d = readOp();
-                reg_D = mem.read8(reg_IX + (byte) d);
-                break;
-
             case 0x5E:  // LD E, (IX + d)
-                d = readOp();
-                reg_E = mem.read8(reg_IX + (byte) d);
-                break;
-
             case 0x66:  // LD H, (IX + d)
-                d = readOp();
-                reg_H = mem.read8(reg_IX + (byte) d);
-                break;
-
             case 0x6E:  // LD L, (IX + d)
+            case 0x7E:  // LD A, (IX + d)
+                r = (code >> 3) & 0x07;
                 d = readOp();
-                reg_L = mem.read8(reg_IX + (byte) d);
+                writeReg8Val(r, mem.read8(reg_IX + (byte) d));
+                logOp("LD %s, (IX + %s)", reg8Name(r), hex8(d));
                 break;
 
             case 0x70:  // LD (IX + d), B
-                d = readOp();
-                mem.write8(reg_IX + (byte) d, reg_B);
-                break;
-
             case 0x71:  // LD (IX + d), C
-                d = readOp();
-                mem.write8(reg_IX + (byte) d, reg_C);
-                break;
-
             case 0x72:  // LD (IX + d), D
-                d = readOp();
-                mem.write8(reg_IX + (byte) d, reg_D);
-                break;
-
             case 0x73:  // LD (IX + d), E
-                d = readOp();
-                mem.write8(reg_IX + (byte) d, reg_E);
-                break;
-
-            case 0x74:  // LD (IX + d), F
-                d = readOp();
-                mem.write8(reg_IX + (byte) d, reg_F.value());
-                break;
-
+            case 0x74:  // LD (IX + d), H
             case 0x75:  // LD (IX + d), L
-                d = readOp();
-                mem.write8(reg_IX + (byte) d, reg_L);
-                break;
-
             case 0x77:  // LD (IX + d), A
+                r = code & 0x07;
                 d = readOp();
-                mem.write8(reg_IX + (byte) d, reg_A);
+                mem.write8(reg_IX + (byte) d, readReg8Val(r));
+                logOp("LD (IX + %s), %s", hex8(d), reg8Name(r));
                 break;
 
-            case 0xD5:  // LD B, n
-                n = readOp();
-                reg_B = n;
+
+            case 0x86:  // ADD A, (IX + d)
+                d = readOp();
+                reg_A = add8(reg_A, mem.read8(reg_IX + (byte) d));
+                logOp("ADD A, (IX + %s)", hex8(d));
                 break;
 
-            case 0xDE:  // LD C, n
-                n = readOp();
-                reg_C = n;
+            case 0x8E:  // ADC A, (IX + d)
+                d = readOp();
+                reg_A = adc8(reg_A, mem.read8(reg_IX + (byte) d));
+                logOp("ADC A, (IX + %s)", hex8(d));
                 break;
 
-            case 0x1B:  // LD D, n
-                n = readOp();
-                reg_D = n;
+            case 0x96:  // SUB A, (IX + d)
+                d = readOp();
+                reg_A = sub8(reg_A, mem.read8(reg_IX + (byte) d));
+                logOp("SUB A, (IX + %s)", hex8(d));
                 break;
 
-            case 0x1E:  // LD E, n
-                n = readOp();
-                reg_E = n;
+            case 0x9E:  // SBC A, (IX + d)
+                d = readOp();
+                reg_A = sbc8(reg_A, mem.read8(reg_IX + (byte) d));
+                logOp("SBC A, (IX + %s)", hex8(d));
                 break;
 
-            case 0x2B:  // LD H, n
-                n = readOp();
-                reg_H = n;
+            case 0xA6:  // AND A, (IX + d)
+                d = readOp();
+                reg_A = and8(reg_A, mem.read8(reg_IX + (byte) d));
+                logOp("AND A, (IX + %s)", hex8(d));
                 break;
 
-            case 0x36:  // LD L, n
-                n = readOp();
-                reg_L = n;
+            case 0xAE:  // XOR A, (IX + d)
+                d = readOp();
+                reg_A = xor8(reg_A, mem.read8(reg_IX + (byte) d));
+                logOp("XOR A, (IX + %s)", hex8(d));
+                break;
+
+            case 0xB6:  // OR A, (IX + d)
+                d = readOp();
+                reg_A = or8(reg_A, mem.read8(reg_IX + (byte) d));
+                logOp("OR A, (IX + %s)", hex8(d));
+                break;
+
+            case 0xBE:  // CP A, (IX + d)
+                d = readOp();
+                cp8(reg_A, mem.read8(reg_IX + (byte) d));
+                logOp("CP A, (IX + %s)", hex8(d));
+                break;
+
+            case 0xE1:  // POP IX
+                reg_IX = pop16();
+                logOp("POP IX");
+                break;
+
+            case 0xE3:  // EX (SP), IX
+                n = pop16();
+                push16(reg_IX);
+                reg_IX = n;
+                logOp("EX (SP), IX");
+                break;
+
+            case 0xE5: // JP (IX)
+                reg_PC = reg_IX;
+                logOp("JP (IX)");
+                break;
+
+            case 0xF9: // LD SP, IX
+                reg_SP = reg_IX;
+                logOp("LD SP, IX");
                 break;
 
             default:
@@ -1695,15 +2343,109 @@ public class Z80 {
 
     private void executeED() {
 
+        int r,v,ss,dd,nn;
+
         int code = readOp();
         switch (code) {
+//z
+            case 0x40:  // IN B, (C)
+            case 0x48:  // IN C, (C)
+            case 0x50:  // IN D, (C)
+            case 0x58:  // IN E, (C)
+            case 0x60:  // IN H, (C)
+            case 0x68:  // IN L, (C)
+            case 0x78:  // IN A, (C)
+                r = (code >> 3) & 0x07;
+                v = io.in8(to16(reg_B, reg_C));
+                writeReg8Val(r, v);
+                logOp("IN %s, (C)", reg8Name(r));
+                break;
+
+            case 0x41: // OUT (C), B
+            case 0x49: // OUT (C), C
+            case 0x51: // OUT (C), D
+            case 0x59: // OUT (C), E
+            case 0x61: // OUT (C), H
+            case 0x69: // OUT (C), L
+            case 0x79: // OUT (C), A
+                r = (code >> 3) & 0x07;
+                io.out8(to16(reg_B, reg_C), reg_A);
+                logOp("OUT (C), %s", reg8Name(r));
+                break;
+
+            case 0x42: // SBC HL, BC
+            case 0x52: // SBC HL, DE
+            case 0x62: // SBC HL, HL
+            case 0x72: // SBC HL, SP
+                ss = (code >> 4) & 0x03;
+                nn = sbc16(HL(), readReg16Val(ss));
+                HL(nn);
+                logOp("SBC HL, BC");
+                break;
+
+            case 0x43:  // LD (nn), BC
+            case 0x53:  // LD (nn), DE
+            case 0x73:  // LD (nn), SP
+                nn = readNn();
+                dd = (code >> 4) & 0x03;
+                v = readReg16Val(dd);
+                mem.write8(nn+0, low4(v));
+                mem.write8(nn+1, high4(v));
+                logOp("LD (%s), %s", hex16(nn), reg16Name(dd));
+                break;
+
+            case 0x44:  // NEG
+                reg_A = sub8(0, reg_A);
+                logOp("NEG");
+                break;
+
+            case 0x45:  // RETN
+                reg_PC = pop16();
+                IFF1 = IFF2;
+                logOp("RETN");
+                break;
+
+            case 0x46:  // IM 0
+                IM = 0;
+                logOp("IM 0");
+                break;
 
             case 0x47:  // LD I, A
                 reg_I = reg_A;
+                logOp("LD I, A");
                 break;
+
+            case 0x4A:  // ADC HL,BC
+            case 0x5A:  // ADC HL,DE
+            case 0x6A:  // ADC HL,HL
+            case 0x7A:  // ADC HL,SP
+                ss = (code >> 4) & 0x03;
+                v = adc16(HL(), readReg16Val(ss));
+                HL(v);
+                logOp("ADC HL,%s", reg16Name(ss));
+                break;
+
+            case 0x4B:  // LD BC,(nn)
+            case 0x5B:  // LD DE,(nn)
+            case 0x7B:  // LD SP,(nn)
+                ss = (code >> 4) & 0x03;
+                nn = readNn();
+                v = to16(mem.read8(nn + 1), mem.read8(nn));
+                writeReg16Val(ss, v);
+                logOp("LD %s,(%s)", reg16Name(ss), hex16(nn));
+                break;
+
+            case 0x4D:  // RETI
+                // TODO
 
             case 0x4F:  // LD R, A
                 reg_R = reg_A;
+                logOp("LD R, A");
+                break;
+
+            case 0x56:  // IM 1
+                IM = 1;
+                logOp("IM 1");
                 break;
 
             case 0x57:  // LD A, I
@@ -1722,6 +2464,7 @@ public class Z80 {
                 reg_F.H = false;
                 reg_F.P = IFF2;
                 reg_F.N = false;
+                logOp("LD A, I");
                 break;
 
             case 0x5F:  // LD A, R
@@ -1740,6 +2483,12 @@ public class Z80 {
                 reg_F.H = false;
                 reg_F.P = IFF2;
                 reg_F.N = false;
+                logOp("LD A, R");
+                break;
+
+            case 0x5E:  // IM 2
+                IM = 2;
+                logOp("IM 2");
                 break;
 
             default:
@@ -1830,28 +2579,257 @@ public class Z80 {
         }
     }
 
-    private int inc8(int val8) {
-        int result = (val8 + 1) & 0xFF;
+    private void writeReg8Val(int r, int val) {
+        switch (r) {
+            case 0: reg_B = val; break;
+            case 1: reg_C = val; break;
+            case 2: reg_D = val; break;
+            case 3: reg_E = val; break;
+            case 4: reg_H = val; break;
+            case 5: reg_L = val; break;
+            case 6: reg_C = val; break;
+            case 7: reg_A = val; break;
+            default:
+                throw new RuntimeException("Unknown reg r: " + r);
+        }
+    }
 
-        reg_F.S = bit(result, 7) != 0;
-        reg_F.Z = result == 0;
-        reg_F.H = (result & 0x0F) == 0x00;  // H_FLAG = (RESULT&0x0F)==0x00
-        reg_F.P = result == 0x80;
+    private int readReg8Val(int r) {
+        switch (r) {
+            case 0: return reg_B;
+            case 1: return reg_C;
+            case 2: return reg_D;
+            case 3: return reg_E;
+            case 4: return reg_H;
+            case 5: return reg_L;
+            case 6: return reg_C;
+            case 7: return reg_A;
+            default:
+                throw new RuntimeException("Unknown reg r: " + r);
+        }
+    }
+
+    private String reg8Name(int r) {
+        switch (r) {
+            case 0: return "B";
+            case 1: return "C";
+            case 2: return "D";
+            case 3: return "E";
+            case 4: return "H";
+            case 5: return "L";
+            case 6: return "C";
+            case 7: return "A";
+            default:
+                throw new RuntimeException("Unknown reg r: " + r);
+        }
+    }
+
+    private void writeReg16Val(int pp, int val) {
+        switch (pp) {
+            case 0: BC(val); break;
+            case 1: DE(val); break;
+            case 2: reg_IX = val; break;
+            case 3: reg_SP = val; break;
+            default:
+                throw new RuntimeException("Unknown reg pp: " + pp);
+        }
+    }
+
+    private int readReg16Val(int pp) {
+        switch (pp) {
+            case 0: return BC();
+            case 1: return DE();
+            case 2: return reg_IX;
+            case 3: return reg_SP;
+            default:
+                throw new RuntimeException("Unknown reg pp: " + pp);
+        }
+    }
+
+    private String reg16Name(int pp) {
+        switch (pp) {
+            case 0: return "BC";
+            case 1: return "DE";
+            case 2: return "IX";
+            case 3: return "SP";
+            default:
+                throw new RuntimeException("Unknown reg pp: " + pp);
+        }
+    }
+
+    private int rlc8(int val8) {
+        int b7 = bit(val8, 7);
+
+        val8 <<= 1;
+        val8 |= b7;
+        val8 &= 0xFF;
+
+        reg_F.S = bit(val8, 7) > 0;
+        reg_F.Z = val8 == 0;
+        reg_F.H = false;
+        reg_F.P = parityEven8(val8);
+        reg_F.N = false;
+        reg_F.C = b7 > 0;
+
+        return val8;
+    }
+
+    private int rrc8(int val8) {
+        int b0 = bit(val8, 0);
+
+        val8 >>= 1;
+        val8 |= b0 << 7;
+        val8 &= 0xFF;
+
+        reg_F.S = bit(val8, 7) > 0;
+        reg_F.Z = val8 == 0;
+        reg_F.H = false;
+        reg_F.P = parityEven8(val8);
+        reg_F.N = false;
+        reg_F.C = b0 > 0;
+
+        return val8;
+    }
+
+    private int rl8(int val8) {
+        int b7 = bit(val8, 7);
+
+        val8 <<= 1;
+        val8 |= reg_F.C ? 0x01 : 0x00;
+        val8 &= 0xFF;
+
+        reg_F.S = bit(val8, 7) > 0;
+        reg_F.Z = val8 == 0;
+        reg_F.H = false;
+        reg_F.P = parityEven8(val8);
+        reg_F.N = false;
+        reg_F.C = b7 > 0;
+
+        return val8;
+    }
+
+    private int rr8(int val8) {
+        int b0 = bit(val8, 0);
+
+        val8 >>= 1;
+        val8 |= reg_F.C ? 0x80 : 0x00;
+        val8 &= 0xFF;
+
+        reg_F.S = bit(val8, 7) > 0;
+        reg_F.Z = val8 == 0;
+        reg_F.H = false;
+        reg_F.P = parityEven8(val8);
+        reg_F.N = false;
+        reg_F.C = b0 > 0;
+
+        return val8;
+    }
+
+    private int sla8(int val8) {
+        int b7 = bit(val8, 7);
+
+        val8 <<= 1;
+        val8 &= 0xFF;
+
+        reg_F.S = bit(val8, 7) > 0;
+        reg_F.Z = val8 == 0;
+        reg_F.H = false;
+        reg_F.P = parityEven8(val8);
+        reg_F.N = false;
+        reg_F.C = b7 > 0;
+
+        return val8;
+    }
+
+    private int sra8(int val8) {
+        int b7 = val8 & 0x80;
+        int b0 = val8 & 0x01;
+
+        val8 >>= 1;
+        val8 |= b7;
+        val8 &= 0xFF;
+
+        reg_F.S = bit(val8, 7) > 0;
+        reg_F.Z = val8 == 0;
+        reg_F.H = false;
+        reg_F.P = parityEven8(val8);
+        reg_F.N = false;
+        reg_F.C = b0 > 0;
+
+        return val8;
+    }
+
+    private int sll8(int val8) {
+        int b7 = bit(val8, 7);
+
+        val8 <<= 1;
+        val8 |= 0x01;
+        val8 &= 0xFF;
+
+        reg_F.S = bit(val8, 7) > 0;
+        reg_F.Z = val8 == 0;
+        reg_F.H = false;
+        reg_F.P = parityEven8(val8);
+        reg_F.N = false;
+        reg_F.C = b7 > 0;
+
+        return val8;
+    }
+
+    private int srl8(int val8) {
+        int b0 = bit(val8, 0);
+
+        val8 >>= 1;
+        val8 &= 0xFF;
+
+        reg_F.S = false;
+        reg_F.Z = val8 == 0;
+        reg_F.H = false;
+        reg_F.P = parityEven8(val8);
+        reg_F.N = false;
+        reg_F.C = b0 > 0;
+
+        return val8;
+    }
+
+    private void bit8(int pos, int val8) {
+//        reg_F.S = false; // Unknown
+        reg_F.Z = bit(val8, pos) == 0;
+        reg_F.H = true;
+//        reg_F.P = parityEven8(val8); // Unknown
+        reg_F.N = false;
+    }
+
+    private int res8(int pos, int val) {
+        return val & ~(1 << pos);
+    }
+
+    private int set8(int pos, int val) {
+        return val | (1 << pos);
+    }
+
+    private int inc8(int val8) {
+        int res = (val8 + 1) & 0xFF;
+
+        reg_F.S = bit(res, 7) != 0;
+        reg_F.Z = res == 0;
+        reg_F.H = (res & 0x0F) == 0x00;  // H_FLAG = (RESULT&0x0F)==0x00
+        reg_F.P = res == 0x80;
         reg_F.N = false;
 
-        return result;
+        return res;
     }
 
     private int dec8(int val8) {
-        int result = (val8 - 1) & 0xFF;
+        int res = (val8 - 1) & 0xFF;
 
-        reg_F.S = bit(result, 7) != 0;
-        reg_F.Z = result == 0;
-        reg_F.H = (result & 0x0F) == 0x0F;  // H_FLAG = (RESULT&0x0F)==0x0F
-        reg_F.P = result == 0x7F;
+        reg_F.S = bit(res, 7) != 0;
+        reg_F.Z = res == 0;
+        reg_F.H = (res & 0x0F) == 0x0F;  // H_FLAG = (RESULT&0x0F)==0x0F
+        reg_F.P = res == 0x7F;
         reg_F.N = true;
 
-        return result;
+        return res;
     }
 
     private int inc16(int val16) {
@@ -1926,17 +2904,17 @@ public class Z80 {
     }
 
     private int add8(int a8, int b8) {
-        int res16 = a8 + b8;
-        byte res8 = (byte) res16;
+        int res = a8 + b8;
+        byte res8 = (byte) res;
 
         reg_F.S = res8 < 0;
         reg_F.Z = res8 == 0;
         reg_F.H = (res8 & 0x0F) < (a8 & 0x0F);
         reg_F.P = a8 >= 0 && b8 >= 0 && res8 < 0 || a8 < 0 && b8 < 0 && res8 >= 0;
         reg_F.N = false;
-        reg_F.C = res16 > 0xFF;
+        reg_F.C = (res & 0x100) != 0;
 
-        return res8;
+        return res & 0xFF;
     }
 
     private int adc8(int a8, int b8) {
@@ -1946,27 +2924,58 @@ public class Z80 {
 
     private int add16(int a16, int b16) {
         int res = a16 + b16;
-
+// TODO H ?
         reg_F.H = (res & 0x0FFF) < (a16 & 0x0FFF);
         reg_F.H = ((a16 ^ b16 ^ res) & 0x10) != 0; // FLAG = (A^B^RESULT)&0x10
         reg_F.N = false;
-        reg_F.C = res > 0xFFFF;
+        reg_F.C = (res & 0x10000) != 0;
 
         return res & 0xFFFF;
     }
 
+    private int adc16(int a8, int b8) {
+        int carry = reg_F.C ? 1 : 0;
+        return add16(a8, b8 + carry);
+    }
+
+    public static void main(String[] args) {
+//        for (int a16 = -0x00ff; a16 < 0xffff; a16++) {
+//            for (int b16 = -0x00ff; b16 < 0xffff; b16++) {
+//                int res = a16 + b16;
+//                boolean h1 = (res & 0x0FFF) < (a16 & 0x0FFF);
+//                boolean h2 = ((a16 ^ b16 ^ res) & 0x10) != 0; // FLAG = (A^B^RESULT)&0x10
+//
+//                if (h1 != h2) {
+//                    System.out.println("h1: " + h1 + ", h2: " + h2 +", a16: " + a16 + ", b16: " + b16);
+//                }
+//            }
+//        }
+
+        for (int a = -0xff; a < 0xff; a++) {
+            for (int b = -0xff; b < 0xff; b++) {
+                int res = a+b;
+                byte res8 = (byte) res;
+
+                boolean h1 = (res & 0x0F) < (a & 0x0F);
+                boolean h2 = (((a & 0xf) + (b & 0xf)) & 0x10) != 0;
+                if (h1 != h2) {
+                    System.out.println("h1: " + h1 + ", h2: " + h2 +", a: " + a + ", b: " + b);
+                }
+            }
+        }
+    }
     private int sub8(int a8, int b8) {
-        int res16 = a8 + b8;
-        byte res8 = (byte) res16;
+        int res = a8 - b8;
+        byte res8 = (byte) res;
 
         reg_F.S = res8 < 0;
         reg_F.Z = res8 == 0;
         reg_F.H = (res8 & 0x0F) > (a8 & 0x0F);
         reg_F.P = a8 >= 0 && b8 >= 0 && res8 < 0 || a8 < 0 && b8 < 0 && res8 >= 0;
-        reg_F.N = false;
-        reg_F.C = res16 > 0xFF;
+        reg_F.N = true;
+        reg_F.C = (res & 0x100) != 0;
 
-        return res8;
+        return res & 0xFF;
     }
 
     private int sbc8(int a8, int b8) {
@@ -1974,43 +2983,66 @@ public class Z80 {
         return sub8(a8, b8 + carry);
     }
 
+    private int sbc16(int a16, int b16) {
+        int carry = reg_F.C ? 1 : 0;
+
+        int res = a16 - b16 - carry;
+        int res16 = res & 0xFFFF;
+
+        reg_F.S = (res & 0x8000) != 0;
+        reg_F.Z = res == 0;
+        reg_F.H = (res & 0x0FFF) > (b16 & 0x0FFF);
+        reg_F.P = res < -0xFFFF || res > 0xEFFF;
+        reg_F.N = true;
+        reg_F.C = (res & 0x10000) != 0;
+
+        return res16;
+    }
+
     private int and8(int a8, int b8) {
-        byte res8 = (byte) (a8 & b8);
+        int res = a8 & b8;
+        byte res8 = (byte) res;
 
         reg_F.S = res8 < 0;
         reg_F.Z = res8 == 0;
         reg_F.H = true;
-        reg_F.P = parity8(res8);
+        reg_F.P = parityEven8(res8);
         reg_F.N = false;
         reg_F.C = false;
 
-        return res8;
+        return res & 0xFF;
     }
 
     private int xor8(int a8, int b8) {
-        byte res8 = (byte) (a8 ^ b8);
+        int res = a8 ^ b8;
+        byte res8 = (byte) res;
 
         reg_F.S = res8 < 0;
         reg_F.Z = res8 == 0;
         reg_F.H = false;
-        reg_F.P = parity8(res8);
+        reg_F.P = parityEven8(res8);
         reg_F.N = false;
         reg_F.C = false;
 
-        return res8;
+        return res & 0xFF;
     }
 
     private int or8(int a8, int b8) {
-        byte res8 = (byte) (a8 | b8);
+        int res = a8 | b8;
+        byte res8 = (byte) res;
 
         reg_F.S = res8 < 0;
         reg_F.Z = res8 == 0;
         reg_F.H = false;
-        reg_F.P = parity8(res8);
+        reg_F.P = parityEven8(res8);
         reg_F.N = false;
         reg_F.C = false;
 
-        return res8;
+        return res & 0xFF;
+    }
+
+    private void cp8(int a8, int b8) {
+        sub8(a8, b8);
     }
 
     private void ret() {
@@ -2032,7 +3064,7 @@ public class Z80 {
         return (val >> pos) & 0x01;
     }
 
-    private boolean parity8(int val8) {
+    private boolean parityEven8(int val8) {
         return (Integer.bitCount(val8 & 0xFF) & 0x01) == 0;
     }
 

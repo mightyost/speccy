@@ -601,7 +601,7 @@ public class Z80Test {
                 int res16 = a+s;
                 byte res8 = (byte) (a+s);
 
-                assertEquals(res8, cpu.reg_A);
+                assertEquals(res16 & 0xFF, cpu.reg_A);
                 assertEquals(res8 < 0, cpu.reg_F.S);
                 assertEquals(res8 == 0, cpu.reg_F.Z);
                 assertEquals(false, cpu.reg_F.N);
@@ -633,7 +633,7 @@ public class Z80Test {
                     int res16 = a+s+c;
                     byte res8 = (byte) (a+s+c);
 
-                    assertEquals(res8, cpu.reg_A);
+                    assertEquals(res16 & 0xFF, cpu.reg_A);
                     assertEquals(res8 < 0, cpu.reg_F.S);
                     assertEquals(res8 == 0, cpu.reg_F.Z);
                     assertEquals(false, cpu.reg_F.N);
@@ -664,7 +664,7 @@ public class Z80Test {
                 int res16 = a&s;
                 byte res8 = (byte) (a&s);
 
-                assertEquals(res8, cpu.reg_A);
+                assertEquals(res16 & 0xFF, cpu.reg_A);
                 assertEquals(res8 < 0, cpu.reg_F.S);
                 assertEquals(res8 == 0, cpu.reg_F.Z);
                 assertEquals((Integer.bitCount(res16&0xff)& 0x01) == 0, cpu.reg_F.P);
@@ -748,6 +748,84 @@ public class Z80Test {
         assertEquals(0x20, cpu.reg_C);
     }
 
+    @Test
+    public void res() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0xA0, 0xA0, 0xA0);
+
+        for (int b = 0; b < 8; b++) {
+
+            cpu.reg_B = 0xFF;
+
+            cpu.reg_PC = 0x0000;
+            cpu.loadRam(0x0000, 0xCB, 0x80 | (b << 3) | 0x00); // RES B, r
+
+            cpu.executeOp();
+
+            assertEquals("Wrong for: " + b, (~(1 << b) & 0xFF), cpu.reg_B);
+        }
+        for (int b = 0; b < 8; b++) {
+
+            cpu.reg_C = 0xFF;
+
+            cpu.reg_PC = 0x0000;
+            cpu.loadRam(0x0000, 0xCB, 0x80 | (b << 3) | 0x01); // RES C, r
+
+            cpu.executeOp();
+
+            assertEquals("Wrong for: " + b, (~(1 << b) & 0xFF), cpu.reg_C);
+        }
+    }
+
+    @Test
+    public void neg() {
+
+        Z80 cpu = new Z80();
+        cpu.init(new TestMemory(), new TestUla());
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0xED, 0x44);
+
+        cpu.reg_A = 0x80;
+
+        cpu.executeOp();
+
+        assertEquals(0x80, cpu.reg_A);
+        assertEquals(true, cpu.reg_F.S);
+        assertEquals(false, cpu.reg_F.Z);
+        assertEquals(false, cpu.reg_F.H);
+        assertEquals(true, cpu.reg_F.P);
+        assertEquals(true, cpu.reg_F.N);
+        assertEquals(true, cpu.reg_F.C);
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0xED, 0x44);
+
+        cpu.reg_A = 0x00;
+
+        cpu.executeOp();
+
+        assertEquals(0x00, cpu.reg_A);
+        assertEquals(false, cpu.reg_F.S);
+        assertEquals(true, cpu.reg_F.Z);
+        assertEquals(false, cpu.reg_F.H);
+        assertEquals(false, cpu.reg_F.P);
+        assertEquals(true, cpu.reg_F.N);
+        assertEquals(false, cpu.reg_F.C);
+
+        cpu.reg_PC = 0x0000;
+        cpu.loadRam(0x0000, 0xED, 0x44);
+
+        cpu.reg_A = 0x98;
+
+        cpu.executeOp();
+
+        assertEquals(0x68, cpu.reg_A);
+    }
 
 
 
