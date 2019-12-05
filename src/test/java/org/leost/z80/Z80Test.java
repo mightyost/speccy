@@ -280,31 +280,31 @@ public class Z80Test {
         Z80 cpu = new Z80();
         cpu.init(new TestMemory(), new TestUla());
 
-        cpu.reg_B = 0x01;
+        cpu.reg_BB = 0x01;
         cpu.reg_PC = 0x0000;
         cpu.loadRam(0x0000, 0x10, 0x10);
 
         cpu.executeOp();
 
-        assertEquals(0x00, cpu.reg_B);
+        assertEquals(0x00, cpu.reg_BB);
         assertEquals(0x0002, cpu.reg_PC);
 
-        cpu.reg_B = 0x02;
+        cpu.reg_BB = 0x02;
         cpu.reg_PC = 0x0000;
         cpu.loadRam(0x0000, 0x10, 0x10);
 
         cpu.executeOp();
 
-        assertEquals(0x01, cpu.reg_B);
+        assertEquals(0x01, cpu.reg_BB);
         assertEquals(0x0012, cpu.reg_PC);
 
-        cpu.reg_B = 0x02;
+        cpu.reg_BB = 0x02;
         cpu.reg_PC = 0x1010;
         cpu.loadRam(0x1010, 0x10, 0xF0);
 
         cpu.executeOp();
 
-        assertEquals(0x01, cpu.reg_B);
+        assertEquals(0x01, cpu.reg_BB);
         assertEquals(0x1002, cpu.reg_PC);
     }
 
@@ -593,7 +593,7 @@ public class Z80Test {
         for (int a = 0; a < 256; a++) {
             for (int s = 0; s < 256; s++) {
                 cpu.reg_A = a;
-                cpu.reg_B = s;
+                cpu.reg_BB = s;
 
                 cpu.reg_PC = 0x0000;
                 cpu.executeOp();
@@ -625,7 +625,7 @@ public class Z80Test {
 
                     cpu.reg_F.C = c == 1;
                     cpu.reg_A = a;
-                    cpu.reg_B = s;
+                    cpu.reg_BB = s;
 
                     cpu.reg_PC = 0x0000;
                     cpu.executeOp();
@@ -656,7 +656,7 @@ public class Z80Test {
             for (int s = 0; s < 256; s++) {
 
                 cpu.reg_A = a;
-                cpu.reg_B = s;
+                cpu.reg_BB = s;
 
                 cpu.reg_PC = 0x0000;
                 cpu.executeOp();
@@ -710,7 +710,7 @@ public class Z80Test {
         cpu.reg_SP = 0x1000;
         cpu.loadRam(0x1000, 0xFF, 0xFF);
 
-        cpu.reg_B = 0x10;
+        cpu.reg_BB = 0x10;
         cpu.reg_C = 0x20;
 
         cpu.executeOp();
@@ -720,7 +720,7 @@ public class Z80Test {
         assertEquals(0x10, mem.read8(0x1000-1));
         assertEquals(0x20, mem.read8(0x1000 - 2));
 
-        cpu.reg_B = 0x30;
+        cpu.reg_BB = 0x30;
         cpu.reg_C = 0x40;
 
         cpu.executeOp();
@@ -730,21 +730,21 @@ public class Z80Test {
         assertEquals(0x30, mem.read8(0x1000-3));
         assertEquals(0x40, mem.read8(0x1000 - 4));
 
-        cpu.reg_B = 0xFF;
+        cpu.reg_BB = 0xFF;
         cpu.reg_C = 0xFF;
 
         cpu.executeOp();
 
         assertEquals(0x0003, cpu.reg_PC);
         assertEquals(0x1000-2, cpu.reg_SP);
-        assertEquals(0x30, cpu.reg_B);
+        assertEquals(0x30, cpu.reg_BB);
         assertEquals(0x40, cpu.reg_C);
 
         cpu.executeOp();
 
         assertEquals(0x0004, cpu.reg_PC);
         assertEquals(0x1000, cpu.reg_SP);
-        assertEquals(0x10, cpu.reg_B);
+        assertEquals(0x10, cpu.reg_BB);
         assertEquals(0x20, cpu.reg_C);
     }
 
@@ -759,14 +759,14 @@ public class Z80Test {
 
         for (int b = 0; b < 8; b++) {
 
-            cpu.reg_B = 0xFF;
+            cpu.reg_BB = 0xFF;
 
             cpu.reg_PC = 0x0000;
             cpu.loadRam(0x0000, 0xCB, 0x80 | (b << 3) | 0x00); // RES B, r
 
             cpu.executeOp();
 
-            assertEquals("Wrong for: " + b, (~(1 << b) & 0xFF), cpu.reg_B);
+            assertEquals("Wrong for: " + b, (~(1 << b) & 0xFF), cpu.reg_BB);
         }
         for (int b = 0; b < 8; b++) {
 

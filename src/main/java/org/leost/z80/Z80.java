@@ -31,7 +31,7 @@ public class Z80 {
         }
     }
 
-    protected int reg_A, reg_B, reg_C, reg_D, reg_E, reg_H, reg_L;  // Main register set
+    protected int reg_A, reg_BB, reg_C, reg_D, reg_E, reg_H, reg_L;  // Main register set
     protected int reg_a, reg_b, reg_c, reg_d, reg_e, reg_h, reg_l;  // Alternate register set
 
     protected Flags reg_F = new Flags(); // Flags
@@ -66,14 +66,14 @@ public class Z80 {
         reg_SP = 0xFFFF;
         IFF1 = false;
         IFF2 = false;
-        reg_A = reg_B = reg_C = reg_D = reg_E = reg_H = reg_L = 0xFF;
+        reg_A = reg_BB = reg_C = reg_D = reg_E = reg_H = reg_L = 0xFF;
         reg_a = reg_b = reg_c = reg_d = reg_e = reg_h = reg_l = 0xFF;
         reg_F.value(0xFF);
         IM = 0;
     }
 
     private int BC() {
-        return to16(reg_B, reg_C);
+        return to16(reg_BB, reg_C);
     }
 
     private int DE() {
@@ -89,7 +89,7 @@ public class Z80 {
     }
 
     private void BC(int val16) {
-        reg_B = high8(val16);
+        reg_BB = high8(val16);
         reg_C = low8(val16);
     }
 
@@ -183,17 +183,17 @@ public class Z80 {
                 break;
 
             case 0x04:  // INC B
-                reg_B = inc8(reg_B);
+                reg_BB = inc8(reg_BB);
                 logOp("INC B");
                 break;
 
             case 0x05:  // DEC B
-                reg_B = dec8(reg_B);
+                reg_BB = dec8(reg_BB);
                 logOp("DEC B");
                 break;
 
             case 0x06:  // LD B, n
-                reg_B = n = readN();
+                reg_BB = n = readN();
                 logOp("LD B, %s", hex8(n));
                 break;
 
@@ -249,8 +249,8 @@ public class Z80 {
 
             case 0x10:  // DJNZ (PC+e)
                 n = readN();
-                reg_B = (reg_B - 1) & 0xFF;
-                if (reg_B != 0) {
+                reg_BB = (reg_BB - 1) & 0xFF;
+                if (reg_BB != 0) {
                     reg_PC += (byte) n;
                 }
                 logOp("DJNZ %s", hex8(n));
@@ -534,42 +534,42 @@ public class Z80 {
                 break;
 
             case 0x41:  // LD B, C
-                reg_B = reg_C;
+                reg_BB = reg_C;
                 logOp("LD B, C");
                 break;
 
             case 0x42:  // LD B, D
-                reg_B = reg_D;
+                reg_BB = reg_D;
                 logOp("LD B, D");
                 break;
 
             case 0x43:  // LD B, E
-                reg_B = reg_E;
+                reg_BB = reg_E;
                 logOp("LD B, E");
                 break;
 
             case 0x44:  // LD B, F
-                reg_B = reg_F.value();
+                reg_BB = reg_F.value();
                 logOp("LD B, F");
                 break;
 
             case 0x45:  // LD B, L
-                reg_B = reg_L;
+                reg_BB = reg_L;
                 logOp("LD B, L");
                 break;
 
             case 0x46:  // LD B, (HL)
-                reg_B = mem.read8(to16(reg_H, reg_L));
+                reg_BB = mem.read8(to16(reg_H, reg_L));
                 logOp("LD B, (HL)");
                 break;
 
             case 0x47:  // LD B, A
-                reg_B = reg_A;
+                reg_BB = reg_A;
                 logOp("LD B, A");
                 break;
 
             case 0x48:  // LD C, B
-                reg_C = reg_B;
+                reg_C = reg_BB;
                 logOp("LD C, B");
                 break;
 
@@ -608,7 +608,7 @@ public class Z80 {
                 break;
 
             case 0x50:  // LD D, B
-                reg_D = reg_B;
+                reg_D = reg_BB;
                 logOp("LD D, B");
                 break;
 
@@ -647,7 +647,7 @@ public class Z80 {
                 break;
 
             case 0x58:  // LD E, B
-                reg_E = reg_B;
+                reg_E = reg_BB;
                 logOp("LD E, B");
                 break;
 
@@ -686,7 +686,7 @@ public class Z80 {
                 break;
 
             case 0x60:  // LD H, B
-                reg_H = reg_B;
+                reg_H = reg_BB;
                 logOp("LD H, B");
                 break;
 
@@ -726,7 +726,7 @@ public class Z80 {
                 break;
 
             case 0x68:  // LD L, B
-                reg_L = reg_B;
+                reg_L = reg_BB;
                 logOp("LD L, B");
                 break;
 
@@ -765,7 +765,7 @@ public class Z80 {
                 break;
 
             case 0x70:  // LD (HL), B
-                mem.write8(to16(reg_H, reg_L), reg_B);
+                mem.write8(to16(reg_H, reg_L), reg_BB);
                 logOp("LD (HL), B");
                 break;
 
@@ -805,7 +805,7 @@ public class Z80 {
                 break;
 
             case 0x78:  // LD A, B
-                reg_A = reg_B;
+                reg_A = reg_BB;
                 logOp("LD A, B");
                 break;
 
@@ -844,7 +844,7 @@ public class Z80 {
                 break;
 
             case 0x80:  // ADD A, B
-                reg_A = add8(reg_A, reg_B);
+                reg_A = add8(reg_A, reg_BB);
                 logOp("ADD A, B");
                 break;
 
@@ -885,7 +885,7 @@ public class Z80 {
                 break;
 
             case 0x88:  // ADC A, B
-                reg_A = adc8(reg_A, reg_B);
+                reg_A = adc8(reg_A, reg_BB);
                 logOp("ADC A, B");
                 break;
 
@@ -925,7 +925,7 @@ public class Z80 {
                 break;
 
             case 0x90:  // SUB A, B
-                reg_A = sub8(reg_A, reg_B);
+                reg_A = sub8(reg_A, reg_BB);
                 logOp("SUB B");
                 break;
 
@@ -966,7 +966,7 @@ public class Z80 {
                 break;
 
             case 0x98:  // SBC A, B
-                reg_A = sbc8(reg_A, reg_B);
+                reg_A = sbc8(reg_A, reg_BB);
                 logOp("SBC B");
                 break;
 
@@ -1007,7 +1007,7 @@ public class Z80 {
                 break;
 
             case 0xA0:  // AND B
-                reg_A = and8(reg_A, reg_B);
+                reg_A = and8(reg_A, reg_BB);
                 logOp("AND B");
                 break;
 
@@ -1048,7 +1048,7 @@ public class Z80 {
                 break;
 
             case 0xA8: // XOR B
-                reg_A = xor8(reg_A, reg_B);
+                reg_A = xor8(reg_A, reg_BB);
                 logOp("XOR B");
                 break;
 
@@ -1089,7 +1089,7 @@ public class Z80 {
                 break;
 
             case 0xB0: // OR B
-                reg_A = or8(reg_A, reg_B);
+                reg_A = or8(reg_A, reg_BB);
                 logOp("OR B");
                 break;
 
@@ -1130,7 +1130,7 @@ public class Z80 {
                 break;
 
             case 0xB8: // CP B
-                sub8(reg_A, reg_B);
+                sub8(reg_A, reg_BB);
                 logOp("CP B");
                 break;
 
@@ -1334,7 +1334,7 @@ public class Z80 {
                 break;
 
             case 0xD9: // EXX
-                n = reg_B; reg_B = reg_b; reg_b = n;
+                n = reg_BB; reg_BB = reg_b; reg_b = n;
                 n = reg_C; reg_C = reg_c; reg_c = n;
                 n = reg_D; reg_D = reg_d; reg_d = n;
                 n = reg_E; reg_E = reg_e; reg_e = n;
@@ -1603,7 +1603,7 @@ public class Z80 {
 
         switch (code) {
             case 0x00:  // RLC B
-                reg_B = rlc8(reg_B);
+                reg_BB = rlc8(reg_BB);
                 logOp("RLC B");
                 break;
 
@@ -1645,7 +1645,7 @@ public class Z80 {
                 break;
 
             case 0x08:  // RRC B
-                reg_B = rrc8(reg_B);
+                reg_BB = rrc8(reg_BB);
                 logOp("RRC B");
                 break;
 
@@ -1687,7 +1687,7 @@ public class Z80 {
                 break;
 
             case 0x10:  // RL B
-                reg_B = rl8(reg_B);
+                reg_BB = rl8(reg_BB);
                 logOp("RL B");
                 break;
 
@@ -1729,7 +1729,7 @@ public class Z80 {
                 break;
 
             case 0x18:  // RR B
-                reg_B = rr8(reg_B);
+                reg_BB = rr8(reg_BB);
                 logOp("RR B");
                 break;
 
@@ -1771,7 +1771,7 @@ public class Z80 {
                 break;
 
             case 0x20:  // SLA B
-                reg_B = sla8(reg_B);
+                reg_BB = sla8(reg_BB);
                 logOp("SLA B");
                 break;
 
@@ -1813,7 +1813,7 @@ public class Z80 {
                 break;
 
             case 0x28:  // SRA B
-                reg_B = sra8(reg_B);
+                reg_BB = sra8(reg_BB);
                 logOp("SRA B");
                 break;
 
@@ -1855,7 +1855,7 @@ public class Z80 {
                 break;
 
             case 0x30:  // SLL B
-                reg_B = sll8(reg_B);
+                reg_BB = sll8(reg_BB);
                 logOp("SLL B");
                 break;
 
@@ -1897,7 +1897,7 @@ public class Z80 {
                 break;
 
             case 0x38:  // SRL B
-                reg_B = srl8(reg_B);
+                reg_BB = srl8(reg_BB);
                 logOp("SRL B");
                 break;
 
@@ -2356,7 +2356,7 @@ public class Z80 {
             case 0x68:  // IN L, (C)
             case 0x78:  // IN A, (C)
                 r = (code >> 3) & 0x07;
-                v = io.in8(to16(reg_B, reg_C));
+                v = io.in8(to16(reg_BB, reg_C));
                 writeReg8Val(r, v);
                 logOp("IN %s, (C)", reg8Name(r));
                 break;
@@ -2369,7 +2369,7 @@ public class Z80 {
             case 0x69: // OUT (C), L
             case 0x79: // OUT (C), A
                 r = (code >> 3) & 0x07;
-                io.out8(to16(reg_B, reg_C), reg_A);
+                io.out8(to16(reg_BB, reg_C), reg_A);
                 logOp("OUT (C), %s", reg8Name(r));
                 break;
 
@@ -2506,7 +2506,7 @@ public class Z80 {
 
             case 0x46:  // LD B, (IY + d)
                 d = readOp();
-                reg_B = mem.read8(reg_IY + (byte) d);
+                reg_BB = mem.read8(reg_IY + (byte) d);
                 break;
 
             case 0x4E:  // LD C, (IY + d)
@@ -2536,7 +2536,7 @@ public class Z80 {
 
             case 0x70:  // LD (IY + d), B
                 d = readOp();
-                mem.write8(reg_IY + (byte) d, reg_B);
+                mem.write8(reg_IY + (byte) d, reg_BB);
                 break;
 
             case 0x71:  // LD (IY + d), C
@@ -2581,7 +2581,7 @@ public class Z80 {
 
     private void writeReg8Val(int r, int val) {
         switch (r) {
-            case 0: reg_B = val; break;
+            case 0: reg_BB = val; break;
             case 1: reg_C = val; break;
             case 2: reg_D = val; break;
             case 3: reg_E = val; break;
@@ -2596,7 +2596,7 @@ public class Z80 {
 
     private int readReg8Val(int r) {
         switch (r) {
-            case 0: return reg_B;
+            case 0: return reg_BB;
             case 1: return reg_C;
             case 2: return reg_D;
             case 3: return reg_E;
@@ -3088,7 +3088,7 @@ public class Z80 {
     private void logOp(String op, Object ... args) {
         System.out.printf("0x%04X:\t", opAddr);
         System.out.printf(op, args);
-        System.out.printf("\t\t\t; A:%s B:%s C:%s D:%s E:%s H:%s L:%s IX:%s IY:%s I:%s R:%s F:%s", hex8(reg_A), hex8(reg_B), hex8(reg_C), hex8(reg_D), hex8(reg_E), hex8(reg_H), hex8(reg_L), hex16(reg_IX), hex16(reg_IY), hex8(reg_I), hex8(reg_R), hex8(reg_F.value()));
+        System.out.printf("\t\t\t; A:%s B:%s C:%s D:%s E:%s H:%s L:%s IX:%s IY:%s I:%s R:%s F:%s", hex8(reg_A), hex8(reg_BB), hex8(reg_C), hex8(reg_D), hex8(reg_E), hex8(reg_H), hex8(reg_L), hex16(reg_IX), hex16(reg_IY), hex8(reg_I), hex8(reg_R), hex8(reg_F.value()));
         System.out.println();
     }
 
